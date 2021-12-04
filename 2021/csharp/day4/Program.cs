@@ -31,7 +31,9 @@ foreach (var item in input.Skip (1))
     }
 }
 
-int winningboard = -1;
+int winner;
+List<(Board board, int number)> winners = new List<(Board board, int number)>();
+
 foreach (var draw in input.First().Split(',').Select(int.Parse))
 {
     foreach (var board in boards)
@@ -43,13 +45,13 @@ foreach (var draw in input.First().Split(',').Select(int.Parse))
         }
     }
 
-    winningboard = boards.FindIndex (t => t.Rows.Any(t => t.Count == 0) || t.Columns.Any(t => t.Count == 0));
-    if (winningboard != -1)
-    {
-        Console.WriteLine($"Winning score: {draw * boards[winningboard].Rows.Select(t => t.Sum()).Sum()}");
-        break;
+    while ((winner = boards.FindIndex (t => t.Rows.Any(t => t.Count == 0) || t.Columns.Any(t => t.Count == 0))) != -1) {
+        winners.Add ((boards[winner], draw));
+        boards.RemoveAt(winner);
     }
 }
+Console.WriteLine($"First winning board: {winners.First ().board.Rows.Select (t => t.Sum ()).Sum () * winners.First ().number}");
+Console.WriteLine($"Last winning board: {winners.Last ().board.Rows.Select(t => t.Sum()).Sum() * winners.Last ().number}");
 
 
 struct Board
