@@ -9,29 +9,40 @@ foreach (var vector in vectors)
     if (vector.Start.X == vector.End.X)
     {
         for (int i = Math.Min(vector.Start.Y, vector.End.Y); i <= Math.Max(vector.Start.Y, vector.End.Y); i++)
-        {
-            var key = new Point(vector.Start.X, i);
-            if (!collisions.ContainsKey(key))
-                collisions[key] = 1;
-            else
-                collisions[key]++;
-        }
+            collisions.AddOrIncrement(new Point(vector.Start.X, i));
     }
     else if (vector.Start.Y == vector.End.Y)
     {
         for (int i = Math.Min(vector.Start.X, vector.End.X); i <= Math.Max(vector.Start.X, vector.End.X); i++)
+            collisions.AddOrIncrement(new Point(i, vector.Start.Y));
+    }
+    else
+    {
+        int xDelta = vector.Start.X < vector.End.X ? 1 : -1;
+        int yDelta = vector.Start.Y < vector.End.Y ? 1 : -1;
+
+        var point = vector.Start;
+        while (!point.Equals (vector.End))
         {
-            var key = new Point(i, vector.Start.Y);
-            if (!collisions.ContainsKey(key))
-                collisions[key] = 1;
-            else
-                collisions[key]++;
+            collisions.AddOrIncrement(point);
+            point = new Point(point.X + xDelta, point.Y + yDelta);
         }
+        collisions.AddOrIncrement(vector.End);
     }
 }
 Console.WriteLine($"Total intersections: {collisions.Values.Where(t => t > 1).Count()}");
 
 
+static class Extensions
+{
+    public static void AddOrIncrement (this Dictionary<Point, int> dictionary, Point value)
+    {
+        if (!dictionary.ContainsKey(value))
+            dictionary[value] = 1;
+        else
+            dictionary[value]++;
+    }
+}
 /*
 for (int i = 0; i < horzVertVectors.Length; i ++)
 {
@@ -64,6 +75,7 @@ for (int i = 0; i < horzVertVectors.Length; i ++)
         }
     }
 }
+
 
 Console.WriteLine("Vectors");
 
