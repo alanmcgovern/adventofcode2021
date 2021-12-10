@@ -10,33 +10,23 @@ var segments = new List<Segment>
     new Segment ('<', '>', 25137),
 };
 
-var incompleteLines = new List<Stack<char>>();
-
-long value = 0;
-foreach (var line in input)
+var results = input.Select(line =>
 {
     var stack = new Stack<char>();
-    bool corrupt = false;
-    foreach (var c in line)
+    char result = line.FirstOrDefault(c =>
     {
         if (segments.Any(t => t.Opening == c))
         {
             stack.Push(c);
+            return false;
         }
-        else if (segments.Any(t => t.Closing == c))
-        {
-            if (segments.Single(t => t.Closing == c).Opening != stack.Pop())
-            {
-                corrupt = true;
-                value += segments.Single(segment => segment.Closing == c).Points;
-            }
-        }
-    }
-    if (!corrupt)
-        incompleteLines.Add(stack);
-}
-Console.WriteLine($"Parser points: {value}");
-
+        return segments.Single(t => t.Closing == c).Opening != stack.Pop();
+    });
+    return result == 0
+        ? ((long)0, stack)
+        : (segments.SingleOrDefault(segment => segment.Closing == result).Points, null);
+});
+Console.WriteLine($"Parser points: {results.Sum (t => t.Item1)}");
 
 // Question 2
 segments = new List<Segment>
@@ -47,9 +37,11 @@ segments = new List<Segment>
     new Segment ('<', '>', 4),
 };
 
-var autocompletePoints = incompleteLines
+var autocompletePoints = results
+    .Where (t => t.Item2 != null)
+    .Select (t => t.Item2)
     .Select(line =>
-        line.Select(opener => segments.Single(t => t.Opening == opener).Points)
+        line!.Select(opener => segments.Single(t => t.Opening == opener).Points)
        .Aggregate((a, b) => a * 5 + b)
     ).OrderBy(t => t)
     .ToArray();
