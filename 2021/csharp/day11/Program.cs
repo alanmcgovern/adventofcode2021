@@ -15,17 +15,34 @@ for (int row = 0; row < swarm.Length; row++)
     }
 }
 
+// We want at least this many steps
+const int FlashSteps = 100;
+// And we want them to all flash simultaneously
+
+int? allFlashedStep = null;
 int flashes = 0;
-int steps = 100;
-foreach (var step in Enumerable.Range (0, steps))
+int stepped = 0;
+int sizeOfSwarm = swarm.SelectMany(t => t).Count();
+while (stepped < FlashSteps || !allFlashedStep.HasValue)
 {
+    stepped++;
+
     foreach (var octopus in swarm.SelectMany(t => t))
         octopus.IncreaseEnergy();
-    flashes += swarm.SelectMany(t => t).Count(t => t.HasFlashed);
+
+    int justFlashed = swarm.SelectMany(t => t).Count(t => t.HasFlashed);
+    if (stepped <= FlashSteps)
+        flashes += justFlashed;
+
+    if (!allFlashedStep.HasValue && justFlashed == sizeOfSwarm)
+        allFlashedStep = stepped;
+
     foreach (var octopus in swarm.SelectMany(t => t))
         octopus.Step();
 }
-Console.WriteLine($"Total flashes after {steps} steps: {flashes}.");
+Console.WriteLine($"Total flashes after {FlashSteps} steps: {flashes}.");
+Console.WriteLine($"First simultaenous flash step: {allFlashedStep.Value}.");
+
 
 class Octopus
 {
