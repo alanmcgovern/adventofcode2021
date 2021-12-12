@@ -1,4 +1,6 @@
-﻿var caveConnections = File.ReadLines("input.txt")
+﻿using System.Diagnostics;
+
+var caveConnections = File.ReadLines("input.txt")
     .Select(t => t.Split('-'))
     .ToArray();
 
@@ -12,35 +14,50 @@ foreach (var connection in caveConnections)
         currentPair[1].Connections.Add(currentPair[0]);
 }
 
+var stopwatch = Stopwatch.StartNew();
 // Walk through the caves
 var completePaths = new HashSet<string>();
 foreach (var cave in caves.Values.Single (t => t.IsStart).Connections)
-    TryTravel(cave, new List<Cave> (), completePaths);
-Console.WriteLine($"Total Paths: {completePaths.Count}");
+    TryTravel(cave, new List<Cave> (), completePaths, false);
+Console.WriteLine($"Total Paths: {completePaths.Count}. Took {stopwatch.Elapsed.TotalSeconds:0.00} seconds");
 
-static void TryTravel (Cave cave, List<Cave> currentPath, HashSet<string> completePaths, bool canUseSmallTwice)
+// Walk through the caves, allowing double visits to small caves.
+completePaths.Clear();
+stopwatch.Restart();
+foreach (var cave in caves.Values.Single(t => t.IsStart).Connections)
+    TryTravel(cave, new List<Cave>(), completePaths, true);
+Console.WriteLine($"Total Paths (with doubles): {completePaths.Count}. Took {stopwatch.Elapsed.TotalSeconds:0.00} seconds");
+
+
+static void TryTravel (Cave cave, List<Cave> currentPath, HashSet<string> completePaths, bool allowSmallTwice)
 {
-    if (cave.Travel ())
+    // If we're allowed visit a cave twice, we should try to visit it 1 and 2 times.
+    // If we're not allowed visit it twice, we'll just visit once because 'false' will
+    // be in the array twice.
+    foreach (var maybeTwice in new[] { allowSmallTwice, false }.Distinct())
     {
-        currentPath.Add(cave);
-        if (cave.IsEnd)
+        if (cave.Travel(maybeTwice))
         {
-            completePaths.Add(string.Join(" -> ", currentPath.Select(t => t.Name)));
+            currentPath.Add(cave);
+
+            var canVisitAnotherSmallTwice = allowSmallTwice && (!cave.IsSmall || cave.Visitations < 2);
+            if (cave.IsEnd)
+            {
+                completePaths.Add(string.Join(" -> ", currentPath.Select(t => t.Name)));
+            }
+            else
+            {
+                foreach (var connection in cave.Connections)
+                    TryTravel(connection, currentPath, completePaths, canVisitAnotherSmallTwice);
+            }
+            cave.UnTravel();
+            currentPath.RemoveAt(currentPath.Count - 1);
         }
-        else
-        {
-            foreach (var connection in cave.Connections)
-                TryTravel(connection, currentPath, completePaths);
-        }
-        cave.UnTravel();
-        currentPath.RemoveAt(currentPath.Count - 1);
     }
 }
 
 class Cave
 {
-    int taken = 0;
-
     public List<Cave> Connections { get; } = new List<Cave>();
     public string Name { get; }
 
@@ -53,17 +70,24 @@ class Cave
     public Cave(string name)
         => Name = name;
 
-    public bool Travel()
+    public bool IsSmall => char.IsLower(Name[0]);
+
+    public int Visitations { get; private set; }
+
+    public bool Travel(bool allowSmallTwice)
     {
-        if (taken > 0 && char.IsLower(Name[0]))
-            return false;
-        taken++;
+        if (IsSmall && Visitations > 0)
+        {
+            if (!allowSmallTwice || Visitations > 1)
+                return false;
+        }
+        Visitations++;
         return true;
     }
 
     public void UnTravel()
-        => taken--;
+        => Visitations--;
 
     public override string ToString()
-        => Name;
+        => $"{Name}: {Visitations}";
 }
