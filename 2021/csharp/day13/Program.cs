@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Text;
 
 using Instructions = System.ReadOnlyMemory<(Axis axis, int position)>;
 
@@ -25,7 +26,27 @@ Console.WriteLine($"Total visible: {new HashSet<Point>(result.Span.ToArray()).Co
 
 
 // Q2
+result = points;
+foreach (var instruction in instructions.Span)
+    result = Fold(instruction.axis, instruction.position, result);
+Console.WriteLine($"Total visible: {new HashSet<Point>(result.Span.ToArray()).Count}");
 
+// Lets make a guess that i need to print this out in order to understand it...
+List<string> lines = new List<string>();
+foreach (var pointSet in result.ToArray ().Distinct ().GroupBy(p => p.Y).OrderBy (p => p.Key))
+{
+    while (pointSet.Key < lines.Count)
+        lines.Add("");
+
+    var currentLine = "";
+    foreach (var point in pointSet.OrderBy(p => p.X))
+        currentLine += new string(' ', point.X - currentLine.Length) + '#';
+    lines.Add(currentLine);
+}
+
+Console.WriteLine("Password:");
+Console.WriteLine(string.Join (Environment.NewLine,lines));
+File.WriteAllText("output.txt", string.Join(Environment.NewLine, lines));
 
 static ReadOnlyMemory<Point> Fold (Axis axis, int position, ReadOnlyMemory<Point> points)
 {
