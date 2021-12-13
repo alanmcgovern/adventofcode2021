@@ -1,39 +1,34 @@
 ﻿using System.Drawing;
-using System.Text;
-
-using Instructions = System.ReadOnlyMemory<(Axis axis, int position)>;
 
 var input = File.ReadAllLines("input.txt");
 
 
-ReadOnlyMemory<Point> points = input
+var points = input
     .TakeWhile(t => !string.IsNullOrEmpty(t))
     .Select(t => t.Split(','))
     .Select(t => new Point(int.Parse(t[0]), int.Parse(t[1])))
     .ToArray();
 
-Instructions instructions = input.SkipWhile(t => !string.IsNullOrEmpty(t)).Skip (1)
+var instructions = input.SkipWhile(t => !string.IsNullOrEmpty(t)).Skip (1)
     .Select(t => t.Split(' ').Last())
     .Select(t => t.Split('='))
     .Select<string[], (Axis axis, int position)>(t => (Enum.Parse<Axis>(t[0], true), int.Parse(t[1])))
     .ToArray();
 
 // Q1
-var result = points;
-foreach (var instruction in instructions.Span.ToArray ().Take (1))
-    result = Fold(instruction.axis, instruction.position, result);
-Console.WriteLine($"Total visible: {new HashSet<Point>(result.Span.ToArray()).Count}");
-
+IEnumerable<Point> result = points;
+foreach (var instruction in instructions.Take(1))
+    result = instruction.axis == Axis.X ? FoldX(result, instruction.position) : FoldY(result, instruction.position);
+Console.WriteLine($"Total visible: {new HashSet<Point>(result).Count}");
 
 // Q2
 result = points;
-foreach (var instruction in instructions.Span)
-    result = Fold(instruction.axis, instruction.position, result);
-Console.WriteLine($"Total visible: {new HashSet<Point>(result.Span.ToArray()).Count}");
+foreach (var instruction in instructions)
+    result = instruction.axis == Axis.X ? FoldX(result, instruction.position) : FoldY(result, instruction.position);
 
 // Lets make a guess that i need to print this out in order to understand it...
-List<string> lines = new List<string>();
-foreach (var pointSet in result.ToArray ().Distinct ().GroupBy(p => p.Y).OrderBy (p => p.Key))
+var lines = new List<string>();
+foreach (var pointSet in result.Distinct ().GroupBy(p => p.Y).OrderBy (p => p.Key))
 {
     while (pointSet.Key < lines.Count)
         lines.Add("");
@@ -46,39 +41,15 @@ foreach (var pointSet in result.ToArray ().Distinct ().GroupBy(p => p.Y).OrderBy
 
 Console.WriteLine("Password:");
 Console.WriteLine(string.Join (Environment.NewLine,lines));
-File.WriteAllText("output.txt", string.Join(Environment.NewLine, lines));
 
-static ReadOnlyMemory<Point> Fold (Axis axis, int position, ReadOnlyMemory<Point> points)
-{
-    var result = new List<Point> (points.Length);
-    foreach (var point in points.Span)
-    {
-        switch (axis)
-        {
-            case Axis.X:
-                if (point.X == position)
-                    continue;
-                if (point.X < position)
-                    result.Add(point);
-                else
-                    result.Add(new Point(point.X - 2 * (point.X - position), point.Y));
-                break;
+static IEnumerable<Point> FoldX(IEnumerable<Point> points, int position)
+    => Fold(points, position, p => p.X, (point, offset) => new Point(offset, point.Y));
 
-            case Axis.Y:
-                if (point.Y == position)
-                    continue;
-                if (point.Y < position)
-                    result.Add(point);
-                else
-                    result.Add(new Point(point.X, point.Y - 2 * (point.Y - position)));
-                break;
-        }
-    }
-    return result.ToArray();
-}
+static IEnumerable<Point> FoldY(IEnumerable<Point> points, int position)
+    => Fold(points, position, p => p.Y, (point, offset) => new Point(point.X, offset));
 
-enum Axis
-{
-    X,
-    Y
-}
+static IEnumerable<Point> Fold(IEnumerable<Point> points, int position, Func<Point, int> selector, Func<Point, int, Point> updater)
+    => points.Where(t => position != selector(t))
+             .Select(t => selector(t) < position ? t : updater(t, selector (t) - 2 * (selector(t) - position)));
+
+enum Axis { X, Y }
