@@ -16,43 +16,36 @@ foreach (var connection in caveConnections)
 
 var stopwatch = Stopwatch.StartNew();
 // Walk through the caves
-var completePaths = new HashSet<string>();
+var completePaths = 0;
 foreach (var cave in caves.Values.Single (t => t.IsStart).Connections)
-    TryTravel(cave, new List<Cave> (), completePaths, false);
-Console.WriteLine($"Total Paths: {completePaths.Count}. Took {stopwatch.Elapsed.TotalSeconds:0.00} seconds");
+    TryTravel(cave, ref completePaths, false);
+Console.WriteLine($"Total Paths: {completePaths}. Took {stopwatch.Elapsed.TotalSeconds:0.00} seconds");
 
 // Walk through the caves, allowing double visits to small caves.
-completePaths.Clear();
+completePaths = 0;
 stopwatch.Restart();
 foreach (var cave in caves.Values.Single(t => t.IsStart).Connections)
-    TryTravel(cave, new List<Cave>(), completePaths, true);
-Console.WriteLine($"Total Paths (with doubles): {completePaths.Count}. Took {stopwatch.Elapsed.TotalSeconds:0.00} seconds");
+    TryTravel(cave, ref completePaths, true);
+Console.WriteLine($"Total Paths (with doubles): {completePaths}. Took {stopwatch.Elapsed.TotalSeconds:0.00} seconds");
 
 
-static void TryTravel (Cave cave, List<Cave> currentPath, HashSet<string> completePaths, bool allowSmallTwice)
+void TryTravel (Cave cave, ref int completePaths, bool allowSmallTwice)
 {
     // If we're allowed visit a cave twice, we should try to visit it 1 and 2 times.
     // If we're not allowed visit it twice, we'll just visit once because 'false' will
     // be in the array twice.
-    foreach (var maybeTwice in new[] { allowSmallTwice, false }.Distinct())
+    if (cave.Travel(allowSmallTwice && caves.Values.All (c => !c.IsSmall || c.Visitations < 2)))
     {
-        if (cave.Travel(maybeTwice))
+        if (cave.IsEnd)
         {
-            currentPath.Add(cave);
-
-            var canVisitAnotherSmallTwice = allowSmallTwice && (!cave.IsSmall || cave.Visitations < 2);
-            if (cave.IsEnd)
-            {
-                completePaths.Add(string.Join(" -> ", currentPath.Select(t => t.Name)));
-            }
-            else
-            {
-                foreach (var connection in cave.Connections)
-                    TryTravel(connection, currentPath, completePaths, canVisitAnotherSmallTwice);
-            }
-            cave.UnTravel();
-            currentPath.RemoveAt(currentPath.Count - 1);
+            completePaths++;
         }
+        else
+        {
+            foreach (var connection in cave.Connections)
+                TryTravel(connection, ref completePaths, allowSmallTwice);
+        }
+        cave.UnTravel();
     }
 }
 
@@ -61,18 +54,13 @@ class Cave
     public List<Cave> Connections { get; } = new List<Cave>();
     public string Name { get; }
 
-    public bool IsStart
-        => Name == "start";
-
-    public bool IsEnd
-        => Name == "end";
+    public bool IsEnd { get; }
+    public bool IsSmall { get; }
+    public bool IsStart { get; }
+    public int Visitations { get; private set; }
 
     public Cave(string name)
-        => Name = name;
-
-    public bool IsSmall => char.IsLower(Name[0]);
-
-    public int Visitations { get; private set; }
+        => (Name, IsStart, IsEnd, IsSmall) = (name, name == "start", name == "end", char.IsLower(name[0]));
 
     public bool Travel(bool allowSmallTwice)
     {
