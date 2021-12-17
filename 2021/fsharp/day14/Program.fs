@@ -32,19 +32,31 @@ let calculate_delta(filePath:string, iterations:int) =
     let growPolymer (pairs) =
         growPolymerPairs(pairs, transformations, iterations)
 
-    polymer
+    let createPairs (elements) =
+        elements
         |> Array.windowed(2)
         |> Array.map (fun pair -> $"{pair[0]}{pair[1]}")
         |> Array.groupBy id
         |> Array.map(fun (key, value) -> key,(int64)value.Length)
         |> Map
-        |> growPolymer
+
+    let countElements(elements:Map<string,int64>) =
+        elements
         |> Map.toArray
         |> Array.append([| ($"{polymer |> Array.last}", 1) |])
         |> Array.groupBy(fun (key, _) -> key[0])
         |> Array.map(fun (key, counts) -> (key, counts |> Array.map snd |> Array.sum))
+
+    let printDelta(elements) =
+        elements
         |> Array.sortByDescending(fun (_key, value) -> value)
         |> fun final -> (final |> Array.head |> snd) - (final |> Array.last |> snd)
+
+    polymer
+        |> createPairs
+        |> growPolymer
+        |> countElements
+        |> printDelta
 
 let execute =
     ("input.txt", 10)
