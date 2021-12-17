@@ -17,7 +17,7 @@ let growPolymerPairs(pairs:Map<string, int64>, transformations:Map<string,string
             pairs
             |> Map.toArray
             |> Array.collect (fun (key, count) -> [| ($"{key[0]}{transformations[key]}", count) ; ($"{transformations[key]}{key[1]}", count) |])
-            |> Array.groupBy(fun (key, _count) -> key)
+            |> Array.groupBy fst
             |> Array.map(fun (key, counts) -> (key, counts |> Array.map snd |> Array.sum))
             |> Map.ofArray
             |> transform(iteration - 1)
@@ -37,7 +37,7 @@ let calculate_delta(filePath:string, iterations:int) =
         |> Array.windowed(2)
         |> Array.map (fun pair -> $"{pair[0]}{pair[1]}")
         |> Array.groupBy id
-        |> Array.map(fun (key, value) -> key,(int64)value.Length)
+        |> Array.map(fun (key, value) -> key, value.Length |> int64)
         |> Map
 
     let countElements(elements:Map<string,int64>) =
@@ -49,7 +49,7 @@ let calculate_delta(filePath:string, iterations:int) =
 
     let printDelta(elements) =
         elements
-        |> Array.sortByDescending(fun (_key, value) -> value)
+        |> Array.sortByDescending snd
         |> fun final -> (final |> Array.head |> snd) - (final |> Array.last |> snd)
 
     polymer
