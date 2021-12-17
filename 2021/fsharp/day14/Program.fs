@@ -1,5 +1,4 @@
 ﻿open System.IO
-open System
 
 let parseInput(filePath:string) =
     let lines = File.ReadAllLines(filePath)
@@ -8,33 +7,51 @@ let parseInput(filePath:string) =
                 |> Array.skip 2
                 |> Array.map(fun line -> line.Split(" -> "))
                 |> Array.map(fun seq -> (seq[0], seq[1]))
-                |> Map.ofArray
+                |> Map
+
     polymer, rules
 
-let grow_polymer (polymer:char[], transformations:Map<string,string>, iterations:int) = 
-
-    // F# is supposed to like tail calls, right??
-    let rec transform iteration (current_polymer:char[]) =
+let growPolymerPairs(pairs:Map<string, int64>, transformations:Map<string,string>, iterations:int) = 
+    let rec transform iteration (pairs:Map<string, int64>) =
         if iteration > 0 then
-            current_polymer
-                |> Array.windowed 2
-                |> Array.map(fun item -> $"{item[0]}{transformations.TryFind((String.Join(String.Empty, item))).Value}{item[1]}")
-                |> Array.reduce(fun state value -> (state + value[1..]))
-                |> Seq.toArray
-                |> transform(iteration - 1)
+            pairs
+            |> Map.toArray
+            |> Array.collect (fun (key, count) -> [| ($"{key[0]}{transformations[key]}", count) ; ($"{transformations[key]}{key[1]}", count) |])
+            |> Array.groupBy(fun (key, _count) -> key)
+            |> Array.map(fun (key, counts) -> (key, counts |> Array.map snd |> Array.sum))
+            |> Map.ofArray
+            |> transform(iteration - 1)
         else
-            current_polymer
-    transform iterations polymer
+            pairs
 
+    transform iterations pairs
     
-let question1 =
-    let (polymer, transformations) = parseInput("input.txt")
-    grow_polymer(polymer, transformations, 10)
-    |> Array.groupBy id
-    |> Array.sortBy(fun (key, value) -> value.Length)
-    |> fun final -> (final |> Array.last |> snd |> Array.length) - (final |> Array.head |> snd |> Array.length)
+let calculate_delta(filePath:string, iterations:int) =
+    let (polymer, transformations) = parseInput(filePath)
+    
+    let growPolymer (pairs) =
+        growPolymerPairs(pairs, transformations, iterations)
+
+    polymer
+        |> Array.windowed(2)
+        |> Array.map (fun pair -> $"{pair[0]}{pair[1]}")
+        |> Array.groupBy id
+        |> Array.map(fun (key, value) -> key,(int64)value.Length)
+        |> Map
+        |> growPolymer
+        |> Map.toArray
+        |> Array.append([| ($"{polymer |> Array.last}", 1) |])
+        |> Array.groupBy(fun (key, _) -> key[0])
+        |> Array.map(fun (key, counts) -> (key, counts |> Array.map snd |> Array.sum))
+        |> Array.sortByDescending(fun (_key, value) -> value)
+        |> fun final -> (final |> Array.head |> snd) - (final |> Array.last |> snd)
 
 let execute =
-    printfn "Q1 - delta is: %d" question1
+    ("input.txt", 10)
+    |> calculate_delta
+    |> printfn "Q1 - delta is: %d"
 
+    ("input.txt", 40)
+    |> calculate_delta
+    |> printfn "Q2 - delta is: %d"
 execute
