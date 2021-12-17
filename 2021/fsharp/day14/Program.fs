@@ -59,11 +59,14 @@ let calculate_delta(filePath:string, iterations:int) =
         |> printDelta
 
 let execute =
-    ("input.txt", 10)
-    |> calculate_delta
+    let generate_polymer(iterations) =
+        calculate_delta("input.txt", iterations)
+
+    10
+    |> generate_polymer
     |> printfn "Q1 - delta is: %d"
 
-    ("input.txt", 40)
-    |> calculate_delta
+    40
+    |> generate_polymer
     |> printfn "Q2 - delta is: %d"
 execute
