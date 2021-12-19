@@ -34,16 +34,12 @@ let traverse(accessor, length) =
     
 
 let execute =
-    let input = "input.txt"
-                |> parseInput
+    let grid_extender(grid:int[][])(x:int, y:int) =
+        (grid[x % grid.Length][y % grid.Length] + x / grid.Length + y / grid.Length - 1) % 9 + 1
 
-    let accessor(x, y) =
-        (input[x % input.Length][y % input.Length] + x / input.Length + y / input.Length - 1) % 9 + 1
-
-    traverse(accessor, input.Length)
-    |> printf "Q1 danger: %d"
-
-    traverse(accessor, input.Length * 5)
-    |> printf "Q2 danger: %d"
+    "input.txt"
+    |> parseInput
+    |> fun input -> (traverse(grid_extender input, input.Length), traverse(grid_extender input, input.Length * 5))
+    |> fun (q1, q2) -> printfn "Q1 danger: %d" q1; printfn "Q2 danger: %d" q2
 
 execute
