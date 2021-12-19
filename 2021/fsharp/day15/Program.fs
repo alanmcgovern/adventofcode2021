@@ -1,38 +1,49 @@
 ﻿open System.IO
-
+open System.Collections.Generic
 
 let parseInput(filePath) =
-    let parseChar (c:char) = (c |> int) - ('0' |> int)
+    let parseChar c = (c |> int) - ('0' |> int)
 
     File.ReadAllLines (filePath)
     |> Array.map(fun value -> (value.ToCharArray () |> Array.map parseChar))
 
-let walkNodes(grid:int[][]) =
-    let mutable lowestDanger = 1238
+let traverse(accessor, length) =
+    let mutable vertices =  [|0..length - 1|]
+                            |> Array.collect(fun x -> ([|0..length - 1|] |> Array.map (fun y -> (x, y))))
+                            |> Set.ofArray
 
-    let rec wander (x, y, score, grid:int[][])=
-        let validDirections () =
-            [|(1, 0); (-1, 0); (0, 1);(0, -1) |]
-            |> Array.map(fun (deltaX, deltaY) -> x + deltaX, y + deltaY)
-            |> Array.filter (fun (newX, newY) -> newY >= 0 && newY < grid.Length && newX >= 0 && newX < grid[newY].Length)
+    let mutable distances = Map.empty<(int*int), int>
+    let pq = new PriorityQueue<int*int, int> ();
+    
+    pq.Enqueue((0, 0), 0);
+    distances <- distances.Add((0, 0), 0)
+    while (pq.Count > 0) do 
+        let _, currentNode, currentCost = pq.TryDequeue();
+        if vertices.Contains (currentNode) then
+            vertices <- vertices.Remove (currentNode)
 
-        let currentScore = score + grid[x][y]
-        if currentScore > lowestDanger then
-            currentScore
-        else if y = (grid.Length - 1) && x = (grid[y].Length - 1) then
-            lowestDanger <- currentScore
-            currentScore
-        else 
-            validDirections ()
-            |> Array.map (fun (newX, newY) -> wander(newX, newY, currentScore, grid))
-            |> Array.min
+            [|(0,  1) ; (0, -1); (1, 0) ; (-1, 0) |]
+                |> Array.map (fun (x, y) -> (x + (currentNode |> fst), y + (currentNode |> snd)))
+                |> Array.filter (vertices.Contains)
+                |> Array.map(fun t -> (t, currentCost + accessor((t |> fst),(t |> snd))))
+                |> Array.filter(fun (node, cost) -> cost < distances.GetValueOrDefault (node, System.Int32.MaxValue))
+                |> Array.iter (fun (node, cost) -> (distances <- distances.Add (node, cost) ;
+                                                    pq.Enqueue(node, cost)))
 
-    wander(0, 0, 0, grid)
+    distances[(length - 1, length - 1)]
+    
 
 let execute =
-    "input.txt"
-    |> parseInput
-    |> walkNodes
-    |> printf "Danger: %d"
+    let input = "input.txt"
+                |> parseInput
+
+    let accessor(x, y) =
+        (input[x % input.Length][y % input.Length] + x / input.Length + y / input.Length - 1) % 9 + 1
+
+    traverse(accessor, input.Length)
+    |> printf "Q1 danger: %d"
+
+    traverse(accessor, input.Length * 5)
+    |> printf "Q2 danger: %d"
 
 execute

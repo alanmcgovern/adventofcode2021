@@ -15,9 +15,6 @@ int Traverse (Graph graph, (int x, int y) source, (int x, int y) destination)
         if (!vertices.Remove(currentNode))
             continue;
 
-        if (priorityQueue.Count % 1000 == 0)
-            Console.WriteLine ("Remaining: {0}", priorityQueue.Count);
-
         var neighbours = new[] { (1, 0), (-1, 0), (0, 1), (0, -1) }
             .Select(t => (t.Item1 + currentNode.x, t.Item2 + currentNode.y))
             .Where(vertices.Contains)
@@ -65,38 +62,4 @@ public readonly struct Graph
 
     public Graph(int[][] graph, int tiles)
         => (this.graph, this.tiles) = (graph, tiles);
-}
-
-class PriorityQueue
-{
-    List<((int x, int y) point, int cost)> prioritised = new List<((int x, int y) point, int cost)>();
-
-    public int Count => prioritised.Count;
-
-    public PriorityQueue(IEnumerable<((int x, int y) point, int cost)> data)
-    {
-        prioritised.AddRange(data);
-        prioritised.Sort((left, right) => right.cost.CompareTo(left.cost));
-    }
-
-    public void ChangePriority((int x, int y) point, int cost)
-    {
-        var index = prioritised.FindIndex(t => t.point == point);
-        prioritised.RemoveAt(index);
-
-        index = prioritised.Count - 1;
-        while (index != -1 && prioritised[index].cost < cost)
-            index--;
-        prioritised.Insert(index + 1, (point, cost));
-
-        prioritised.Sort((left, right) => right.cost.CompareTo(left.cost));
-
-    }
-
-    public ((int x, int y), int cost) Pop ()
-    {
-        var last = prioritised.Last();
-        prioritised.RemoveAt (prioritised.Count - 1);
-        return last;
-    }
 }
