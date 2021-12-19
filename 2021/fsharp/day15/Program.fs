@@ -39,7 +39,8 @@ let execute =
 
     "input.txt"
     |> parseInput
-    |> fun input -> (traverse(grid_extender input, input.Length), traverse(grid_extender input, input.Length * 5))
-    |> fun (q1, q2) -> printfn "Q1 danger: %d" q1; printfn "Q2 danger: %d" q2
+    |> fun input -> [|("Q1", input, input.Length) ; ("Q2", input, input.Length * 5) |]
+    |> Array.map (fun (q, grid, length) -> (q, traverse(grid_extender grid, length)))
+    |> Array.map (fun (q, danger) -> printfn "%s danger: %d" q danger)
 
 execute
