@@ -1,7 +1,10 @@
 ﻿using System.Collections;
 
+using BitMemory = System.ReadOnlyMemory<byte>;
+using BitSpan = System.ReadOnlySpan<byte>;
+
 // Convert to 'binary' 1s and 0s 
-ReadOnlyMemory<byte> binary = File.ReadAllLines("input.txt")
+BitMemory binary = File.ReadAllLines("input.txt")
     .SelectMany(line => line.ToArray())
     .SelectMany(c => Convert.ToString(Convert.ToInt32($"{c}", 16), 2).PadLeft(4, '0'))
     .Select(c => (byte)(c - '0'))
@@ -13,10 +16,10 @@ Console.WriteLine($"Q2: {packet.Compute()}");
 
 static class PacketParser
 {
-    public static Packet Parse(ReadOnlyMemory<byte> memory)
+    public static Packet Parse(BitMemory memory)
      => Parse(ref memory);
 
-    static Packet Parse(ref ReadOnlyMemory<byte> memory)
+    static Packet Parse(ref BitMemory memory)
     {
         var packetMemory = memory.Slice(6);
         if ((Type)memory.Slice(3, 3).ToLong() == Type.LiteralValue)
@@ -43,10 +46,10 @@ static class PacketParser
         return packet;
     }
 
-    public static long ReadLiteralValue(ReadOnlyMemory<byte> memory)
+    public static long ReadLiteralValue(BitMemory memory)
         => ReadLiteralValue(ref memory);
 
-    static long ReadLiteralValue(ref ReadOnlyMemory<byte> memory)
+    static long ReadLiteralValue(ref BitMemory memory)
     {
         long value = 0;
         bool shouldExit = false;
@@ -62,7 +65,7 @@ static class PacketParser
 
 struct Packet : IEnumerable<Packet>
 {
-    public ReadOnlyMemory<byte> Memory { get; }
+    public BitMemory Memory { get; }
     public List<Packet> Operands { get; } = new List<Packet>();
     public Type PacketType => (Type)Memory.Slice(3, 3).ToLong();
     public long Version => Memory.Slice(0, 3).ToLong();
@@ -81,7 +84,7 @@ struct Packet : IEnumerable<Packet>
         }
     }
 
-    public Packet(ReadOnlyMemory<byte> memory)
+    public Packet(BitMemory memory)
         => Memory = memory;
 
     public long Compute()
@@ -113,10 +116,10 @@ struct Packet : IEnumerable<Packet>
 
 static class Extensions
 {
-    public static long ToLong(this ReadOnlyMemory<byte> memory)
+    public static long ToLong(this BitMemory memory)
         => memory.Span.ToLong();
 
-    public static long ToLong(this ReadOnlySpan<byte> span)
+    public static long ToLong(this BitSpan span)
     {
         long result = 0;
         for (int i = 0; i < span.Length; i++)
