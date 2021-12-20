@@ -4,24 +4,23 @@
 ReadOnlyMemory<byte> binary = File.ReadAllLines("input.txt")
     .SelectMany(line => line.ToArray())
     .SelectMany(c => Convert.ToString(Convert.ToInt32($"{c}", 16), 2).PadLeft(4, '0'))
-    .Select (c => (byte)(c - '0'))
-    .ToArray()
-    .AsMemory();
+    .Select(c => (byte)(c - '0'))
+    .ToArray();
 
-var packet = Packet.Parse(binary);
+var packet = PacketParser.Parse(binary);
 Console.WriteLine($"Q1: {packet.Sum(t => t.Version)}");
 Console.WriteLine($"Q2: {packet.Compute()}");
 
-struct Packet : IEnumerable<Packet>
+static class PacketParser
 {
     public static Packet Parse(ReadOnlyMemory<byte> memory)
-        => Parse(ref memory);
+     => Parse(ref memory);
 
-    public static Packet Parse(ref ReadOnlyMemory<byte> memory)
+    static Packet Parse(ref ReadOnlyMemory<byte> memory)
     {
         var packetMemory = memory.Slice(6);
         if ((Type)memory.Slice(3, 3).ToLong() == Type.LiteralValue)
-            _ = ParseLiteralValue(ref packetMemory);
+            _ = ReadLiteralValue(ref packetMemory);
         else if (packetMemory.Span[0] == 0)
             packetMemory = packetMemory.Slice(16);
         else
@@ -44,10 +43,10 @@ struct Packet : IEnumerable<Packet>
         return packet;
     }
 
-    static long ParseLiteralValue(ReadOnlyMemory<byte> memory)
-        => ParseLiteralValue(ref memory);
+    public static long ReadLiteralValue(ReadOnlyMemory<byte> memory)
+        => ReadLiteralValue(ref memory);
 
-    static long ParseLiteralValue(ref ReadOnlyMemory<byte> memory)
+    static long ReadLiteralValue(ref ReadOnlyMemory<byte> memory)
     {
         long value = 0;
         bool shouldExit = false;
@@ -59,23 +58,14 @@ struct Packet : IEnumerable<Packet>
         }
         return value;
     }
+}
 
-    public IEnumerator<Packet> GetEnumerator()
-    {
-        yield return this;
-
-        foreach (var child in Operands)
-            foreach (var message in child)
-                yield return message;
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
-        => GetEnumerator();
-
+struct Packet : IEnumerable<Packet>
+{
     public ReadOnlyMemory<byte> Memory { get; }
-
-    public long Version => Memory.Slice(0, 3).ToLong();
+    public List<Packet> Operands { get; } = new List<Packet>();
     public Type PacketType => (Type)Memory.Slice(3, 3).ToLong();
+    public long Version => Memory.Slice(0, 3).ToLong();
 
     public (long? lengthInBits, long? lengthInMessages, long? literalValue) Value
     {
@@ -83,7 +73,7 @@ struct Packet : IEnumerable<Packet>
         {
             var dataStart = Memory.Slice(6);
             if (PacketType == Type.LiteralValue)
-                return (default, default, ParseLiteralValue(dataStart));
+                return (default, default, PacketParser.ReadLiteralValue(dataStart));
             else if (dataStart.Span[0] == 0)
                 return (dataStart.Slice(1).ToLong(), default, default);
             else
@@ -91,12 +81,8 @@ struct Packet : IEnumerable<Packet>
         }
     }
 
-    public List<Packet> Operands { get; } = new List<Packet>();
-
-    Packet(ReadOnlyMemory<byte> memory)
-    {
-        Memory = memory;
-    }
+    public Packet(ReadOnlyMemory<byte> memory)
+        => Memory = memory;
 
     public long Compute()
         => PacketType switch
@@ -111,6 +97,18 @@ struct Packet : IEnumerable<Packet>
             Type.Equal => Operands[0].Compute() == Operands[1].Compute() ? 1 : 0,
             _ => throw new NotSupportedException()
         };
+
+    public IEnumerator<Packet> GetEnumerator()
+    {
+        yield return this;
+
+        foreach (var child in Operands)
+            foreach (var message in child)
+                yield return message;
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => GetEnumerator();
 }
 
 static class Extensions
