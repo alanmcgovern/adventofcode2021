@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Diagnostics;
 
 using BitMemory = System.ReadOnlyMemory<byte>;
 using BitSpan = System.ReadOnlySpan<byte>;
