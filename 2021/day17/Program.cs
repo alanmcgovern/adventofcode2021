@@ -13,20 +13,28 @@ if (x1 > x2)
 // Start at 0,0. Figure out the maximum 'y' and
 Console.WriteLine($"{x1}..{x2}.  {y1}..{y2}");
 
-// Brute force it as we can put some reasonable bounding boxes on the value.
+// Put some bounding boxes on the value.
 // v^2 = u^2 + 2as
 // min 'x' velocity  to reach x1 is: (0)  = u^2 + 2(-1)(x1) => c
 // max 'x' velocity to not exceed x2 is: x2.
-var minXVelocity = (int) Math.Abs(Math.Sqrt(2 * x1)) - 1;
-var maxXVelocity = x2 + 1;
+var minXVelocity = (int) Math.Abs(Math.Sqrt(2 * x1));
+var maxXVelocity = x2;
 
-// Min 'y' velocity to meet y2 is... y2. One shot wonder
-// With the upper and lower bounds on X I could compute an actual bounding box, but computers are fast.
-var minYVelocity = y2 - 1;
-var maxYVelocity = 500 + 1;
-(int x, int y)[] results = Enumerable.Range(minXVelocity, maxXVelocity + minXVelocity)
-    .SelectMany(x => Enumerable.Range(minYVelocity, maxYVelocity + Math.Abs (y2)).Select(y => (x, y)))
-   .ToArray();
+// Min 'y' velocity to meet y2 is... y2. One shot wonder.
+var minYVelocity = y2;
+
+// The absolute longest amount of time it can take to reach 'x1' is:
+//      v = u + at
+//   => t = (v - u)/a
+//   => t = (0-minXVelocity)/-1
+//   => t = minXVelocity
+// 
+// In this time our 'y' must travel to *at least* max (y1, y2)
+// max (y1, y2) = u(t) + 0.5(a)(t^2)
+//  => u = (max(y1, y2) - 0.5(-1)(t^2)) / t
+var maxYVelocity = Math.Max(y1, y2) + maxXVelocity;
+IEnumerable<(int x, int y)> results = Enumerable.Range(minXVelocity, maxXVelocity + minXVelocity)
+    .SelectMany(x => Enumerable.Range(minYVelocity, maxYVelocity + Math.Abs(minYVelocity)).Select(y => (x, y)));
 
 Dictionary<(int x, int y), int> maxHeights = new Dictionary<(int x, int y), int>();
 foreach (var initialVelocity in results)
