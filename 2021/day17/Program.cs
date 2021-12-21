@@ -32,7 +32,7 @@ var minYVelocity = y2;
 // In this time our 'y' must travel to *at least* max (y1, y2)
 // max (y1, y2) = u(t) + 0.5(a)(t^2)
 //  => u = (max(y1, y2) - 0.5(-1)(t^2)) / t
-var maxYVelocity = Math.Max(y1, y2) + maxXVelocity;
+var maxYVelocity = (int)(Math.Max(y1, y2) + maxXVelocity / 2);
 IEnumerable<(int x, int y)> results = Enumerable.Range(minXVelocity, maxXVelocity + minXVelocity)
     .SelectMany(x => Enumerable.Range(minYVelocity, maxYVelocity + Math.Abs(minYVelocity)).Select(y => (x, y)));
 
