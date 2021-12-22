@@ -43,4 +43,4 @@ let execute =
     |> Array.map (fun (q, grid, length) -> (q, traverse(grid_extender grid, length)))
     |> Array.map (fun (q, danger) -> printfn "%s danger: %d" q danger)
 
-execute
+execute |> ignore
