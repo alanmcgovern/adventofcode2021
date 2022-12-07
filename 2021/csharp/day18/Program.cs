@@ -1,131 +1,144 @@
-﻿bool examples = true;
+﻿Console.WriteLine(Day18(File.ReadAllLines("input.txt")));
 
-var snumbers = File.ReadAllLines(examples ? "examples.txt" : "input.txt")
-    .Select(t => SnumberParser.Parse(t))
-    .ToArray();
-
-Console.Write(SnumberParser.Parse("[[[[[9,8],1],2],3],4]").Explode());
-Console.Write(" == ");
-Console.WriteLine(SnumberParser.Parse("[[[[0,9],2],3],4]"));
-if (SnumberParser.Parse("[[[[[9,8],1],2],3],4]").Explode() != SnumberParser.Parse("[[[[0,9],2],3],4]"))
-    throw new Exception("Derpa");
-
-foreach (var snumber in snumbers)
-    Console.WriteLine(snumber!.ToString ());
-
-class Snumber
+(int, int) Day18(string[] lines)
 {
-    public static Snumber Zero { get; } = new Snumber((0, null), (0, null));
-    public (int? value, Snumber? snumber) Left = (null, null);
-    public (int? value, Snumber? snumber) Right = (null, null);
+    var snailfishes = lines.Select(Parse).ToList();
 
-    public Snumber ((int? value, Snumber? number) left, (int? value, Snumber? number) right)
-        => (Left, Right) = (left, right);
+    var mag = Magnitude(snailfishes.Aggregate((s, sf) => Reduce(Sum(s, sf))));
 
-    public Snumber Explode ()
-    {
-        // Throw away any remainder at this point
-        if (TryExplode(0, out (int? value, Snumber? snumber) newValue, out int? _remainderLeft, out int? remainderRight))
-            return newValue.snumber!;
-        return this;
-    }
+    var maxMag = (from a in snailfishes
+                  from b in snailfishes
+                  where a != b
+                  select Magnitude(Reduce(Sum(a, b))))
+                 .DefaultIfEmpty()
+                 .Max();
 
-    bool TryExplode(int depth, out (int? value, Snumber? snumber) newValue, out int? remainderLeft, out int? remainderRight)
-    {
-        newValue = (default, default);
-        var newSnumber = this;
-        remainderLeft = 0;
-        remainderRight = 0;
-        if (Left.snumber is not null)
-        {
-            if (Left.snumber.TryExplode (depth + 1, out (int? value, Snumber? snumber) newLeftSnumber, out remainderLeft, out remainderRight))
-            {
-                if (newSnumber.Right.value.HasValue && remainderRight > 0)
-                {
-                    newValue = (null, new Snumber(newLeftSnumber, (newSnumber.Right.value + remainderRight, null)));
-                    remainderRight = 0;
-                }
-                else
-                    newValue = (null, new Snumber(newLeftSnumber, newSnumber.Right));
-                return true;
-            }
-        }
-        if (Right.snumber is not null)
-        {
-            if (Right.snumber.TryExplode(depth + 1, out (int? value, Snumber? snumber) newRightSnumber, out remainderLeft, out remainderRight))
-            {
-                if (newSnumber.Left.value.HasValue && remainderLeft > 0)
-                {
-                    newValue = (null, new Snumber((newSnumber.Left.value + remainderLeft, null), newRightSnumber));
-                    remainderRight = 0;
-                }
-                else
-                    newValue = (null, new Snumber(newSnumber.Left, newRightSnumber));
-            }
-            return true;
-        }
-
-        if (Left.value.HasValue && Right.value.HasValue && depth >= 4)
-        {
-            remainderLeft = Left.value.Value;
-            remainderRight = Right.value.Value;
-            newValue = (0, null);
-            return true;
-        }
-
-        return false;
-    }
-
-    bool Split ()
-    {
-        return true;
-
-    }
-
-    public override string ToString()
-        => $"[{(Left.value.HasValue ? Left.value.Value : Left.snumber!)},{(Right.value.HasValue ? Right.value.Value : Right.snumber!)}]";
-
-
-    public static Snumber operator +(Snumber left, Snumber right)
-    {
-        return Zero;
-    }
-
+    return (mag, maxMag);
 }
 
-static class SnumberParser
+int Magnitude(List<(char type, int value)> sum)
 {
-    public static Snumber Parse(ReadOnlySpan<char> buffer)
+restart:
+    for (var i = 0; i < sum.Count - 2; i++)
     {
-        if (buffer[0] != '[')
-            throw new ArgumentException();
-        Parse(ref buffer, out (int? value, Snumber? snumber) output);
-        return output.snumber!;
+        var c = sum[i].type;
+        if (c == '0' && sum[i + 1].type == '0')
+        {
+            var m = sum[i].value * 3 + sum[i + 1].value * 2;
+            sum[i] = ('0', m);
+            sum.RemoveRange(i + 1, 2);
+            sum.RemoveAt(i - 1);
+            goto restart;
+        }
     }
 
-    static bool Parse(ref ReadOnlySpan<char> buffer, out (int? number, Snumber? value) value)
+    return sum[0].value;
+}
+
+List<(char type, int value)> Reduce(List<(char type, int value)> sum)
+{
+restart:
+    var leftParens = 0;
+    for (var i = 0; i < sum.Count; i++)
     {
-        if (buffer[0] == '[')
+        var v = sum[i].value;
+        var c = sum[i].type;
+
+        leftParens = c switch { '[' => leftParens + 1, ']' => leftParens - 1, _ => leftParens };
+
+        if (leftParens == 5)
         {
-            buffer = buffer.Slice(1);
-            Parse(ref buffer, out (int? value, Snumber? snumber) left);
-            if (buffer[0] != ',')
-                throw new ArgumentException();
-            buffer = buffer.Slice(1);
-            Parse(ref buffer, out (int? value, Snumber? snumber) right);
-            if (buffer[0] != ']')
-                throw new ArgumentException();
-            buffer = buffer.Slice(1);
-            value = (null, new Snumber(left, right));
-            return false;
+            Explode(i);
+
+            goto restart;
         }
-        else if (buffer[0] >= '0' && buffer[0] <= '9')
+    }
+
+    for (var i = 0; i < sum.Count; i++)
+    {
+        var v = sum[i].value;
+
+        if (v > 9)
         {
-            value = (buffer[0] - '0', null);
-            buffer = buffer.Slice(1);
-            return true;
+            Split(i);
+
+            goto restart;
+        }
+    }
+
+    return sum;
+
+    void Explode(int i)
+    {
+        // explode left
+        var leftIndex = sum.GetRange(0, i).FindLastIndex(t => t.type == '0');
+        if (leftIndex != -1)
+        {
+            sum[leftIndex] = ('0', sum[leftIndex].value + sum[i + 1].value);
         }
         else
-            throw new NotSupportedException();
+        {
+            sum[i + 1] = ('0', 0);
+        }
+
+        // explode right
+        var rightIndex = sum.FindIndex(i + 4, t => t.type == '0');
+        if (rightIndex != -1)
+        {
+            sum[rightIndex] = ('0', sum[rightIndex].value + sum[i + 2].value);
+        }
+        else
+        {
+            sum[i + 2] = ('0', 0);
+        }
+
+        sum[i] = ('0', 0);
+        sum.RemoveRange(i + 1, 3);
     }
+
+    void Split(int i)
+    {
+        var div = sum[i].value / 2f;
+        var left = (int)Math.Floor(div);
+        var right = (int)Math.Ceiling(div);
+        sum[i] = (']', 0);
+        sum.Insert(i, ('0', right));
+        sum.Insert(i, ('0', left));
+        sum.Insert(i, ('[', 0));
+    }
+}
+
+List<(char type, int value)> Sum(List<(char type, int value)> a, List<(char type, int value)> b)
+{
+    var list = new List<(char type, int value)>();
+
+    list.Add(('[', 0));
+    list.AddRange(a);
+    list.AddRange(b);
+    list.Add((']', 0));
+
+    return list;
+}
+
+List<(char type, int value)> Parse(string line)
+{
+    var list = new List<(char type, int value)>();
+
+    foreach (var c in line)
+    {
+        if (c == ',') continue;
+        var type = c switch
+        {
+            '[' or ']' => c,
+            _ => '0'
+        };
+        var value = type switch
+        {
+            '[' or ']' => 0,
+            _ => c - '0'
+        };
+        list.Add((type, value));
+    }
+
+    return list;
 }
