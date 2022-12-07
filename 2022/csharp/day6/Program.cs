@@ -6,11 +6,9 @@ Console.WriteLine($"Q1: {ConsumeCharacters(14)}");
 
 int ConsumeCharacters(int messageHeaderLength)
 {
-    return Enumerable.Range(0, input.Length)
-        .SkipLast(messageHeaderLength - 1)
-        .Select(t => input.Slice(t, messageHeaderLength))
-        .Select(AllDifferent)
-        .TakeWhile(t => t == false)
+    return input
+        .Window(messageHeaderLength)
+        .TakeWhile(t => !AllDifferent(t))
         .Count() + messageHeaderLength;
 }
 
@@ -24,4 +22,13 @@ bool AllDifferent(ReadOnlyMemory<char> memory)
         span = span.Slice(1);
     }
     return true;
+}
+
+static class Extensions
+{
+    public static IEnumerable<ReadOnlyMemory<T>> Window<T>(this ReadOnlyMemory<T> self, int windowLength)
+    {
+        for (int i = 0; i + windowLength < self.Length; i++)
+            yield return self.Slice(i, windowLength);
+    }
 }
