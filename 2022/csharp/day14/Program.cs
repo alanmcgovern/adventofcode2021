@@ -2,19 +2,25 @@
 using System.Collections.Immutable;
 
 var terrain = Setup (File.ReadAllLines("input.txt"));
-Print(terrain, new Point(494, 0), new Point(503, 9));
 
-Console.Write($"Q1: {CountUntilOverflow(terrain)}");
+var q1Terrain = FillTerrain(terrain, floorOffset: null);
+Print(q1Terrain);
 
-static int CountUntilOverflow(ImmutableDictionary<Point, Material> initialTerrain)
+var q2Terrain = FillTerrain(terrain, floorOffset: 2);
+Print(q2Terrain);
+
+Console.WriteLine($"Q1: {q1Terrain.Where(t => t.Value == Material.Sand).Count()}");
+Console.WriteLine($"Q2: {q2Terrain.Where(t => t.Value == Material.Sand).Count()}");
+
+static ImmutableDictionary<Point, Material> FillTerrain(ImmutableDictionary<Point, Material> initialTerrain, int? floorOffset)
 {
     var terrain = new Dictionary<Point, Material>(initialTerrain);
 
     // The first position for every piece of sand is 1 pixel below the source point.
-    var start = terrain.Where(t => t.Value == Material.Source).Select(t => t.Key).FirstOrDefault().Offset(0, 1);
+    var start = terrain.Where(t => t.Value == Material.Source).Select(t => t.Key).FirstOrDefault();
 
     // If any sand exceeds this Y position, we've overflowed.
-    var lowestLevel = terrain.Select(t => t.Key.Y).Max();
+    var lowestLevel = terrain.Select(t => t.Key.Y).Max() + floorOffset.GetValueOrDefault();
 
     var down = new Point(0, 1);
     var downLeft = new Point(-1, 1);
@@ -23,6 +29,13 @@ static int CountUntilOverflow(ImmutableDictionary<Point, Material> initialTerrai
     var sand = start;
     while (sand.Y < lowestLevel)
     {
+        if (floorOffset.HasValue && sand.Offset (down).Y == lowestLevel)
+        {
+            terrain[sand.Offset(down)] = Material.Rock;
+            terrain[sand.Offset(downLeft)] = Material.Rock;
+            terrain[sand.Offset(downRight)] = Material.Rock;
+        }
+
         if (terrain.GetValueOrDefault(sand.Offset(down), Material.Air) == Material.Air)
             sand = sand.Offset(down);
         else if (terrain.GetValueOrDefault(sand.Offset(downLeft), Material.Air) == Material.Air)
@@ -32,11 +45,13 @@ static int CountUntilOverflow(ImmutableDictionary<Point, Material> initialTerrai
         else
         {
             terrain[sand] = Material.Sand;
+            if (sand == start)
+                break;
             sand = start;
         }
     }
 
-    return terrain.Where(t => t.Value == Material.Sand).Count();
+    return ImmutableDictionary.CreateRange (terrain);
 }
 
 static ImmutableDictionary<Point, Material> Setup(string[] initialGeometry)
@@ -74,14 +89,20 @@ static ImmutableDictionary<Point, Material> Setup(string[] initialGeometry)
     return ImmutableDictionary.CreateRange(data);
 }
 
-static void Print (ImmutableDictionary<Point, Material> terrain, Point start, Point end)
+static void Print (ImmutableDictionary<Point, Material> terrain)
 {
+    var xLocations = terrain.Where(t => t.Value == Material.Sand).Select(t => t.Key.X);
+    var yLocation = terrain.Where(t => t.Value == Material.Sand).Select(t => t.Key.Y);
+    var start = new Point(xLocations.Min () - 1, 0);
+    var end = new Point(xLocations.Max () + 1, yLocation.Max () + 1);
+
     for (int j = start.Y; j <= end.Y; j++)
     {
         Console.WriteLine();
         for (int i = start.X; i <= end.X; i++)
             Console.Write((char)terrain.GetValueOrDefault(new Point(i, j), Material.Air));
     }
+    Console.WriteLine();
 }
 
 enum Material
