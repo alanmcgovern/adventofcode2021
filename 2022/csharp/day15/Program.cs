@@ -1,11 +1,12 @@
 ﻿
 using System.Collections.Immutable;
+using System.Numerics;
 using System.Text.RegularExpressions;
 
+var sensorBeaconPairs = Parse(File.ReadAllLines("input.txt"));
+
 int preferredY = 2000000;
-var sensorBeaconPairs = Parse (File.ReadAllLines("input.txt"));
-var populatedCaves = PopulateAreas(sensorBeaconPairs, preferredY);
-//Print(populatedCaves);
+ImmutableDictionary<Point, Material> populatedCaves = PopulateAreas(sensorBeaconPairs, preferredY);
 Console.WriteLine($"Q1: {populatedCaves.Where(t => t.Key.Y == preferredY).Where(t => t.Value == Material.NoBeacon || t.Value == Material.Sensor).Count()}");
 
 static ReadOnlyMemory<(Point sensor, Point beacon)> Parse(string[] rawData)
@@ -28,7 +29,6 @@ static ImmutableDictionary<Point, Material> PopulateAreas(ReadOnlyMemory<(Point 
     var caves = new Dictionary<Point, Material>();
     foreach ((var sensor, var beacon) in sensorPositions.Span)
     {
-        Console.WriteLine($"handling: {sensor} -> {beacon}");
         foreach (var point in ManhattenDistancePoints(sensor, beacon, yPosition))
             caves[point] = Material.NoBeacon;
         caves[beacon] = Material.Beacon;
@@ -53,24 +53,49 @@ static IEnumerable<Point> ManhattenDistancePoints (Point center, Point edge, int
     }
 }
 
-static void Print (ImmutableDictionary<Point, Material> caves)
+const int minXY = 0;
+const int maxXY = 4000000;
+Console.WriteLine($"Q2: {FindDistressBeacon(sensorBeaconPairs, new Point(minXY, minXY), new Point(maxXY, maxXY))}");
+
+static string FindDistressBeacon(ReadOnlyMemory<(Point sensor, Point beacon)> sensorBeaconPairs, Point min, Point max)
 {
-    // *lol*, this is pointless on the actual data.
-    var minY = caves.Keys.Select(p => p.Y).Min();
-    var maxY = caves.Keys.Select(p => p.Y).Max();
+    // for each circle, look 1 position beyond the edge and check that it's further away than the beacon for each sensor/beacon pair.
+    // .... right?
+    Span<Point> points = stackalloc Point[2];
 
-    var minX = caves.Keys.Select(p => p.X).Min();
-    var maxX = caves.Keys.Select(p => p.X).Max();
-
-    for (int y = minY - 1; y < maxY + 1; y++)
+    for (int i = 0; i < sensorBeaconPairs.Length; i++)
     {
-        Console.WriteLine();
-        Console.Write(y.ToString().PadRight(5));
-        for (int x = minX - 1; x < maxX + 1; x++)
-            Console.Write((char)caves.GetValueOrDefault(new Point(x, y), Material.Unknown));
+        (var sensor, var beacon) = sensorBeaconPairs.Span[i];
+        var distance = ManhattanDistance(sensor, beacon) + 1;
+        for (int offset = -distance; offset <= distance; offset++)
+        {
+            points[0] = sensor.Offset(offset, distance - Math.Abs(offset));
+            points[1] = sensor.Offset(offset, -(distance - Math.Abs(offset)));
+            foreach (ref var point in points)
+            {
+                if (point.X < minXY || point.X > maxXY)
+                    continue;
+                if (point.Y < minXY || point.Y > maxXY)
+                    continue;
+                bool foundIt = true;
+                foreach (var pair in sensorBeaconPairs.Span)
+                {
+                    if (ManhattanDistance(pair.sensor, pair.beacon) >= ManhattanDistance(pair.sensor, point))
+                    {
+                        foundIt = false;
+                        break;
+                    }
+                }
+                if (foundIt)
+                    return (new BigInteger(point.X) * maxXY + point.Y).ToString ();
+            }
+        }
     }
-    Console.WriteLine();
+    throw new NotSupportedException();
 }
+
+static int ManhattanDistance(Point center, Point other)
+    => Math.Abs(center.X - other.X) + Math.Abs(center.Y - other.Y);
 
 enum Material
 {
