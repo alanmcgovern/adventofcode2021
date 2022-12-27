@@ -5,7 +5,9 @@ using System.Text.RegularExpressions;
 (var valves, var distances) = Parse(File.ReadAllLines("input.txt"));
 
 Console.WriteLine($"Q1: {MaximumPressureRelease(valves, distances, 30)}");
+Console.WriteLine($"Q2: {Q2MaximumPressureRelease(valves, distances, 26)}");
 
+// Q1
 int MaximumPressureRelease(ImmutableArray<Valve> valves, ImmutableDictionary<(Valve, Valve), int> distances, int remainingActions)
 {
     var startValve = valves.Single(t => t.Name == "AA");
@@ -51,6 +53,32 @@ void MaximumPressureReleaseRecurse(Valve currentValve, ImmutableArray<Valve> ope
         }
     }
 }
+
+int Q2MaximumPressureRelease(ImmutableArray<Valve> valves, ImmutableDictionary<(Valve, Valve), int> distances, int remainingActions)
+{
+    var startValve = new[] { valves.Single(t => t.Name == "AA") };
+    var openableValves = valves.Where(t => t.FlowRate > 0).ToImmutableArray();
+    if (openableValves.Length > 32)
+        throw new NotSupportedException();
+
+    // Try... all combinations?
+    var totalReleasedForCombo = new Dictionary<int, int>
+    {
+        { 0, 0 }
+    };
+    for (int i = 1; i < (1 << openableValves.Length + 1); i++) {
+        var shardedValves = openableValves.Where((valve, index) => ((1 << index) & i) != 0).Concat(startValve).ToImmutableArray();
+        totalReleasedForCombo[i] = MaximumPressureRelease(shardedValves, distances, remainingActions);
+    }
+
+    int max = 0;
+    for (int i = 0; i < (1 << openableValves.Length + 1); i++) {
+        var inverted = (~i) & ((1 << openableValves.Length + 1) - 1);
+        max = Math.Max(max, totalReleasedForCombo[i] + totalReleasedForCombo[inverted]);
+    }
+    return max;
+}
+
 
 static (ImmutableArray<Valve> valves, ImmutableDictionary<(Valve, Valve), int> distances) Parse(string[] rawData)
 {
