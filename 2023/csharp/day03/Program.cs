@@ -1,6 +1,7 @@
 ﻿
 
-Console.WriteLine($"Q1: {CountParts()}");
+Console.WriteLine($"Q1: {CountParts().Sum(t => t.Sum())}");
+Console.WriteLine($"Q2: {CountParts().Where(t => t.Length == 2).Sum(t => t[0] * t[1])}");
 
 static char[][] GetGrid(bool expand)
 {
@@ -13,10 +14,10 @@ static char[][] GetGrid(bool expand)
     return result;
 }
 
-int CountParts()
+int[][]CountParts()
 {
     var grid = GetGrid(true);
-    int count = 0;
+    List<int[]> results = new List<int[]>(); ;
     for (int row = 1; row < grid.Length - 2; row++)
     {
         for (int col = 1; col < grid[row].Length - 2; col++)
@@ -25,14 +26,16 @@ int CountParts()
             if (char.IsDigit(cell) || cell == '.')
                 continue;
 
+            List<int> adjacentNumbers = new List<int>();
             foreach (var rowOffset in new[] { -1, 0, 1 })
             {
                 foreach (var colOffset in new[] { -1, 0, 1 })
-                    count += MaybeParse(grid, row + rowOffset, col + colOffset);
+                    adjacentNumbers.Add(MaybeParse(grid, row + rowOffset, col + colOffset));
             }
+            results.Add(adjacentNumbers.Where(t => t != 0).ToArray());
         }
     }
-    return count;
+    return results.ToArray();
 }
 
 int MaybeParse(char[][] grid, int row, int col)
