@@ -2,7 +2,7 @@
 
 IList<(string word, string number)> replacements = new[]
 {
-    ( "zero",   "z--0--o" )s,
+    ( "zero",   "z--0--o" ),
     ( "one",    "o--1--e" ),
     ( "two",    "t--2--o" ),
     ( "three",  "t--3--e" ),
