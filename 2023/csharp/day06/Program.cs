@@ -2,16 +2,24 @@
 
 Console.WriteLine($"Q1: {races.Select(WinningWays).Aggregate((a, b) => a * b)}");
 
-int WinningWays(Race race)
+var combinedRace = new Race {
+    MinDistance = 1 + long.Parse (new string(races.SelectMany (t => (t.MinDistance - 1).ToString()).ToArray ())),
+    Time = long.Parse (new string(races.SelectMany (t => t.Time.ToString()).ToArray ())),
+};
+
+Console.WriteLine($"Q2: {WinningWays(combinedRace)}");
+
+
+long WinningWays(Race race)
 {
-    int a = 1, b = -race.Time, c = race.MinDistance;
+    long a = 1, b = -race.Time, c = race.MinDistance;
     var plusminus = Math.Sqrt((b * b) - 4 * a * c);
 
     var one = (-b + plusminus) / (2 * a);
     var other = (-b - plusminus) / (2 * a);
 
-    var min = (int)Math.Ceiling (Math.Min(one, other));
-    var max = (int)Math.Floor (Math.Max(one, other));
+    var min = (long)Math.Ceiling (Math.Min(one, other));
+    var max = (long)Math.Floor (Math.Max(one, other));
 
     return max - min + 1;
 }
@@ -30,6 +38,6 @@ static IList<Race> ParseRaces(string[] lines)
 
 class Race
 {
-    public int Time;
-    public int MinDistance;
+    public long Time;
+    public long MinDistance;
 }
