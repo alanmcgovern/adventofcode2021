@@ -1,22 +1,27 @@
 ﻿var starMap = ParseMap(File.ReadAllLines("input.txt"));
-(var expandedStarMap, int[] expansionRows, int[] expansionColumns) = ExpandMap(starMap);
 
-IList<((int row, int col) firstStar, (int row, int col) secondStar)> starTuples = AllStarPairs(expandedStarMap);
 
-Console.WriteLine($"Q1: {starTuples.Select(pair => Math.Abs(pair.firstStar.row - pair.secondStar.row) + Math.Abs(pair.firstStar.col - pair.secondStar.col)).Sum ()}");
-Console.WriteLine($"Q2: {MegaDistance(starMap, expansionRows, expansionColumns)}");
+Console.WriteLine($"Q1: {MegaDistance(starMap, 2)}");
+Console.WriteLine($"Q2: {MegaDistance(starMap, 1000000)}");
 
-static long MegaDistance(IList<IList<SpaceType>> starMap, int[] expansionRows, int[] expansionColumns)
+
+static IList<IList<SpaceType>> ParseMap(string[] input)
+    => input.Select((row, Index) => (IList<SpaceType>)row.Select(t => (SpaceType)t).ToList().AsReadOnly()).ToList().AsReadOnly();
+
+static (int[] expansionRows, int[] expansionColumns) FindExpansionPoints(IList<IList<SpaceType>> map)
 {
-    static bool Between (int min, int max, int value)
-    {
-        if (min < max)
-            return value >= min && value <= max;
-        return value >= max && value <= min;
-    }
+    var expansionRows = Enumerable.Range(0, map.Count).Where(row => map[row].All(t => t == SpaceType.Empty)).ToArray();
+    var expansionCols = Enumerable.Range(0, map[0].Count).Where(col => Enumerable.Range(0, map.Count).All(row => map[row][col] == SpaceType.Empty)).ToArray();
+    return (expansionRows, expansionCols);
+}
 
-    var expansionSize = 1000000;
+static long MegaDistance(IList<IList<SpaceType>> starMap, int expansionSize)
+{
+    Func<int, int, int, bool> Between = (int min, int max, int value)
+        => (value >= min && value <= max) || (value >= max && value <= min);
+
     long totalDistance = 0;
+    (int[] expansionRows, int[] expansionColumns) = FindExpansionPoints(starMap);
     foreach (((int row, int col) firstStar, (int row, int col) secondStar) in AllStarPairs(starMap))
     {
         totalDistance += Math.Abs(firstStar.row - secondStar.row) + Math.Abs(firstStar.col - secondStar.col);
@@ -48,51 +53,6 @@ static IList<((int, int) firstStar, (int, int) secondStar)> AllStarPairs(IList<I
         .ToHashSet()
         .ToArray();
 }
-
-static (IList<IList<SpaceType>> expandedMap, int[] expansionRows, int[] expansionColumns) ExpandMap(IList<IList<SpaceType>> original)
-{
-    var expansionRows = Enumerable.Range(0, original.Count).Where(row => original[row].All(t => t == SpaceType.Empty)).ToArray();
-    var expansionCols = Enumerable.Range(0, original[0].Count).Where(col => Enumerable.Range (0, original.Count).All (row => original[row][col] == SpaceType.Empty)).ToArray ();
-
-    var expandedMap = new IList<SpaceType>[original.Count + expansionRows.Length];
-    for (int i = 0; i < expandedMap.Length; i++)
-        expandedMap[i] = new SpaceType[original[0].Count + expansionCols.Length];
-
-    // Iterate through the original map
-    int row = 0;
-    int expandedRow = 0;
-    while (row < original.Count)
-    {
-        if (expansionRows.Contains(row)) {
-            for (int i = 0; i < expandedMap[row].Count; i++)
-            {
-                expandedMap[expandedRow][i] = SpaceType.Empty;
-                expandedMap[expandedRow + 1][i] = SpaceType.Empty;
-            }
-            expandedRow++;
-        } else {
-            int col = 0, expandedCol = 0;
-            while (col < original[row].Count)
-            {
-                expandedMap[expandedRow][expandedCol] = original[row][col];
-                if (expansionCols.Contains(col))
-                {
-                    expandedCol++;
-                    expandedMap[expandedRow][expandedCol] = SpaceType.Empty;
-                }
-                expandedCol++;
-                col++;
-            }
-        }
-        expandedRow++;
-        row++;
-    }
-
-    return (expandedMap, expansionRows, expansionCols);
-}
-
-static IList<IList<SpaceType>> ParseMap(string[] input)
-    => input.Select((row, Index) => (IList<SpaceType>)row.Select(t => (SpaceType)t).ToList().AsReadOnly()).ToList().AsReadOnly();
 
 enum SpaceType
 {
