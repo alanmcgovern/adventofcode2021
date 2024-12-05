@@ -15,6 +15,9 @@
                 .ToArray ();
 
             Console.WriteLine ($"Q1: {directions.Select (direction => Search (grid, needle, direction)).Sum ()}");
+
+            Console.WriteLine ($"Q2: {Searchmas (grid)}");
+
         }
 
         static int Search (char[][] haystack, char[] needle, (int x, int y) direction)
@@ -30,6 +33,31 @@
                     }
                     if (found && needle_index == needle.Length)
                         totalFound++;
+                }
+            }
+            return totalFound;
+        }
+
+        static int Searchmas (char[][] haystack)
+        {
+            int totalFound = 0;
+
+            var directions = new[] {
+                new(int x, int y)[] { (1, 1), (-1, -1) },
+                new(int x, int y)[]{ (1, -1), (-1, 1) }
+            };
+
+            var needles = new[] { "MS", "SM" };
+            for (int i = 1; i < haystack.Length - 1; i++) {
+                for (int j = 1; j < haystack[i].Length - 1; j++) {
+                    if (haystack[i][j] != 'A')
+                        continue;
+
+                    totalFound += directions.All (direction => {
+                        return needles.Any (needle => {
+                            return needle[0] == haystack[i + direction[0].x][j + direction[0].y] && needle[1] == haystack[i + direction[1].x][j + direction[1].y];
+                        });
+                    }) ? 1 : 0;
                 }
             }
             return totalFound;
