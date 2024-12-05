@@ -29,15 +29,23 @@
             });
 
             Console.WriteLine ($"Q1: {correctUpdates.Select (t => t[t.Count / 2]).Sum ()}");
-        }
 
-        /*
-         *  t.Sort ((left, right) => {
+
+            // Part2
+            var incorrectlyOrdered = updates.Except (correctUpdates).ToList ();
+            foreach (var update in incorrectlyOrdered) {
+                update.Sort ((left, right) => {
                     if (ordering.Any (node => node.Item1 == left && node.Item2 == right))
                         return -1;
                     if (ordering.Any (node => node.Item2 == left && node.Item1 == right))
                         return 1;
-                    throw new NotSupportedException ("??");
-        */
+
+                    // Assume only one element doesn't have to be before any others, and so it's first.
+                    return -1;
+                });
+            }
+
+            Console.WriteLine ($"Q2: {incorrectlyOrdered.Select (t => t[t.Count / 2]).Sum ()}");
+        }
     }
 }
