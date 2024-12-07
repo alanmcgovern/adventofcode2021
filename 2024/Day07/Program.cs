@@ -17,12 +17,12 @@
                 return (target, (ReadOnlyMemory<long>) operands);
             }).ToArray ();
 
-            Console.WriteLine ($"Q1: {input.Where (t => IsValid(t, new[] { Operator.Mul, Operator.Add})).Sum (t => t.target)}");
-            Console.WriteLine ($"Q2: {input.Where (t => IsValid(t, new[] { Operator.Mul, Operator.Add, Operator.Pipe})).Sum (t => t.target)}");
+            Console.WriteLine ($"Q1: {input.Where (t => IsValid (t, [Operator.Mul, Operator.Add])).Sum (t => t.target)}");
+            Console.WriteLine ($"Q2: {input.Where (t => IsValid (t, [Operator.Mul, Operator.Add, Operator.Pipe])).Sum (t => t.target)}");
         }
 
         static bool IsValid ((long target, ReadOnlyMemory<long> operands) equation, Operator[] allowedOperators)
-            => Compute(equation.operands.Span[0],equation.operands.Slice(1), allowedOperators).Any (t => t == equation.target);
+            => Compute (equation.operands.Span[0], equation.operands[1..], allowedOperators).Any (t => t == equation.target);
 
         static IEnumerable<long> Compute(long val, ReadOnlyMemory<long> remainder, Operator[] allowedOperators)
         {
@@ -38,7 +38,7 @@
                     Operator.Pipe => long.Parse (val.ToString () + remainder.Span[0].ToString ()), // ain't nobody got time for 
                     _ => throw new InvalidOperationException ()
                 };
-                foreach (var v in Compute (nextVal, remainder.Slice (1), allowedOperators))
+                foreach (var v in Compute (nextVal, remainder[1..], allowedOperators))
                     yield return v;
             }
         }
