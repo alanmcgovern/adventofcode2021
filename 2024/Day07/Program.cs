@@ -17,26 +17,28 @@
                 return (target, (ReadOnlyMemory<long>) operands);
             }).ToArray ();
 
-            Console.WriteLine ($"Q1: {input.Where (IsValid).Sum (t => t.target)}");
+            Console.WriteLine ($"Q1: {input.Where (t => IsValid(t, new[] { Operator.Mul, Operator.Add})).Sum (t => t.target)}");
+            Console.WriteLine ($"Q2: {input.Where (t => IsValid(t, new[] { Operator.Mul, Operator.Add, Operator.Pipe})).Sum (t => t.target)}");
         }
 
-        static bool IsValid ((long target, ReadOnlyMemory<long> operands) equation)
-            => Compute(equation.operands.Span[0],equation.operands.Slice(1)).Any (t => t == equation.target);
+        static bool IsValid ((long target, ReadOnlyMemory<long> operands) equation, Operator[] allowedOperators)
+            => Compute(equation.operands.Span[0],equation.operands.Slice(1), allowedOperators).Any (t => t == equation.target);
 
-        static IEnumerable<long> Compute(long val, ReadOnlyMemory<long> remainder)
+        static IEnumerable<long> Compute(long val, ReadOnlyMemory<long> remainder, Operator[] allowedOperators)
         {
             if (remainder.Length == 0) {
                 yield return val;
                 yield break;
             }
 
-            foreach(var op in allowedOperations) {
+            foreach(var op in allowedOperators) {
                 var nextVal = op switch {
                     Operator.Mul => val * remainder.Span[0],
                     Operator.Add => val + remainder.Span[0],
+                    Operator.Pipe => long.Parse (val.ToString () + remainder.Span[0].ToString ()), // ain't nobody got time for 
                     _ => throw new InvalidOperationException ()
                 };
-                foreach (var v in Compute (nextVal, remainder.Slice (1)))
+                foreach (var v in Compute (nextVal, remainder.Slice (1), allowedOperators))
                     yield return v;
             }
         }
