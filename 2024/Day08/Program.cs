@@ -1,4 +1,5 @@
-﻿using System.Runtime.ExceptionServices;
+﻿using System.Linq;
+using System.Runtime.ExceptionServices;
 
 namespace Day08
 {
@@ -15,17 +16,36 @@ namespace Day08
             }
         }
 
-        public static IEnumerable<Tower> Antinodes (this (Tower first, Tower second) towers)
+        public static IEnumerable<Tower> Antinodes (this (Tower first, Tower second) towers, HashSet<Tower>? restrictedSet)
         {
             // (1, 2) -> (5, 7)
             var xDelta = towers.first.Position.x - towers.second.Position.x;
             var yDelta = towers.first.Position.y - towers.second.Position.y;
 
-            var antinode1 = (towers.first.Position.x + xDelta, towers.first.Position.y + yDelta);
-            var antinode2 = (towers.second.Position.x - xDelta, towers.second.Position.y - yDelta);
+            if (restrictedSet is null) {
+                var antinode1 = (towers.first.Position.x + xDelta, towers.first.Position.y + yDelta);
+                var antinode2 = (towers.second.Position.x - xDelta, towers.second.Position.y - yDelta);
 
-            yield return new Tower { Frequency = towers.first.Frequency, Position = antinode1 };
-            yield return new Tower { Frequency = towers.first.Frequency, Position = antinode2 };
+                yield return new Tower { Frequency = towers.first.Frequency, Position = antinode1 };
+                yield return new Tower { Frequency = towers.first.Frequency, Position = antinode2 };
+            } else {
+                // return self.
+                yield return towers.first;
+
+                // all positives
+                var antinode = towers.first.WithPosition ((towers.first.Position.x + xDelta, towers.first.Position.y + yDelta));
+                while (restrictedSet.Contains (antinode)) {
+                    yield return antinode;
+                    antinode = antinode.WithPosition ((antinode.Position.x + xDelta, antinode.Position.y + yDelta));
+                }
+
+                // all negatives
+                antinode = towers.first.WithPosition ((towers.first.Position.x - xDelta, towers.first.Position.y - yDelta));
+                while (restrictedSet.Contains (antinode)) {
+                    yield return antinode;
+                    antinode = antinode.WithPosition ((antinode.Position.x - xDelta, antinode.Position.y - yDelta));
+                }
+            }
         }
     }
 
@@ -36,6 +56,9 @@ namespace Day08
 
         public override int GetHashCode () => Position.GetHashCode ();
         public override bool Equals (object? obj) => obj is Tower other && Position.Equals (other.Position);
+
+        public Tower WithPosition ((int x, int y) position)
+            => new Tower { Frequency = this.Frequency, Position = position };
     }
 
     class Program
@@ -55,19 +78,19 @@ namespace Day08
             var antinodes = map
                 .Where (t => t.Frequency.HasValue)
                 .GroupBy (t => t.Frequency)
-                .SelectMany (t => t.Permutations (restricted: true))
-                .SelectMany (pair => pair.Antinodes ())
+                .SelectMany (t => t.Permutations ())
+                .SelectMany (pair => pair.Antinodes (restrictedSet: null))
                 .Where (t => map.Contains (t))
                 .Distinct ()
                 .Count ();
             Console.WriteLine ($"Q1 {antinodes}");
 
             // Well...
-            var antinodes = map
+            antinodes = map
                 .Where (t => t.Frequency.HasValue)
                 .GroupBy (t => t.Frequency)
                 .SelectMany (t => t.Permutations ())
-                .SelectMany (pair => pair.Antinodes (restricted: false))
+                .SelectMany (pair => pair.Antinodes (restrictedSet: map))
                 .Where (t => map.Contains (t))
                 .Distinct ()
                 .Count ();
