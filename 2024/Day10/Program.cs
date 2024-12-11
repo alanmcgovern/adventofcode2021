@@ -20,7 +20,6 @@
             Console.WriteLine ($"Q1: {count}");
 
             // Copy-pasta. I did it in part one. I just need to remove the .Distinct()
-            // Count the unique paths to the peaks... just in case.
             count = 0;
             for (int y = 0; y < input.Length; y++) {
                 for (int x = 0; x < input[y].Length; x++) {
