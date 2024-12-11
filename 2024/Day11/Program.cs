@@ -4,33 +4,48 @@
     {
         static void Main (string[] args)
         {
-            IList<long> stones = File.ReadAllLines ("input.txt")
+            var stones = File.ReadAllLines ("input.txt")
                 .First ()
                 .Split (' ', StringSplitOptions.RemoveEmptyEntries)
                 .Select (long.Parse)
-                .ToArray ()
-                .AsReadOnly ();
+                .GroupBy (t => t)
+                .ToDictionary (t => t.Key, t => (long) t.Count ());
 
+            var blunk = stones;
             foreach (var val in Enumerable.Range (0, 25))
-                stones = Iterate (stones);
+                blunk = Iterate (blunk);
 
-            Console.WriteLine ($"Q1 {stones.Count}");
+            Console.WriteLine ($"Q1 {blunk.Values.Sum ()}");
+
+            blunk = stones;
+            foreach (var val in Enumerable.Range (0, 75))
+                blunk = Iterate (blunk);
+
+            Console.WriteLine ($"Q2 {blunk.Values.Sum ()}");
         }
 
-        static IList<long> Iterate (IList<long> stones)
+        static Dictionary<long, long> Iterate (Dictionary<long, long> stones)
         {
-            var transformed = new List<long> ();
+            var transformed = new Dictionary<long, long> ();
+
+            void Increment (long stone, long count)
+            {
+                if (!transformed.TryGetValue (stone, out long cur))
+                    cur = 0;
+                transformed[stone] = cur + count;
+            }
+
             foreach (var stone in stones) {
-                if (stone == 0) {
-                    transformed.Add (1);
-                } else if (stone.ToString ().Length % 2 == 0) {
-                    var str = stone.ToString ();
+                if (stone.Key == 0) {
+                    Increment (1, stone.Value);
+                } else if (stone.Key.ToString ().Length % 2 == 0) {
+                    var str = stone.Key.ToString ();
                     var l = str.Substring (0, str.Length / 2);
                     var r = str.Substring (str.Length / 2);
-                    transformed.Add (long.Parse (l));
-                    transformed.Add (long.Parse (r));
+                    Increment (long.Parse (l), stone.Value);
+                    Increment (long.Parse (r), stone.Value);
                 } else {
-                    transformed.Add (stone * 2024);
+                    Increment (stone.Key * 2024, stone.Value);
                 }
             }
             return transformed;
