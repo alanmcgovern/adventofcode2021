@@ -1,14 +1,15 @@
-﻿using System.Numerics;
+﻿using System.Linq;
+using System.Numerics;
 using System.Text.RegularExpressions;
 
 namespace Day13
 {
     class Program
     {
-        readonly record struct Button(int XDelta, int YDelta, int Cost);
-        readonly record struct Destination (int X, int Y);
+        readonly record struct Button(long XDelta, long YDelta, long Cost);
+        readonly record struct Destination (long X, long Y);
         readonly record struct Game(Button A, Button B, Destination Prize);
-        readonly record struct Solution(int Cost);
+        readonly record struct Solution(long Cost);
 
         static void Main (string[] args)
         {
@@ -24,8 +25,8 @@ namespace Day13
                     continue;
                 }
                 var match = matcher.Match (line);
-                int x = int.Parse (match.Groups[1].Value);
-                int y = int.Parse (match.Groups[2].Value);
+                var x = long.Parse (match.Groups[1].Value);
+                var y = long.Parse (match.Groups[2].Value);
                 if (line.StartsWith ("Button A", StringComparison.Ordinal)) {
                     a = new Button (x, y, 3);
                 } else if (line.StartsWith ("Button B", StringComparison.Ordinal)) {
@@ -37,17 +38,21 @@ namespace Day13
             }
 
             Console.WriteLine ($"Q1: {games.Select (CalculateCost).Where (t => t.HasValue).Sum (t => t.Value.Cost)}");
-            
+
+            // heh heh heh.
+            games = games.Select (t => new Game (t.A, t.B, new Destination (t.Prize.X + 10000000000000L, t.Prize.Y + 10000000000000L)))
+                .ToList ();
+            Console.WriteLine ($"Q2: {games.Select (CalculateCost).Where (t => t.HasValue).Sum (t => t.Value.Cost)}");
         }
 
         static Solution? CalculateCost(Game game)
         {
             // standard simultaenous equations... urgh.
-            int a1x = game.A.XDelta, b1y = game.B.XDelta, c1 = game.Prize.X;
-            int a2x = game.A.YDelta, b2y = game.B.YDelta, c2 = game.Prize.Y;
+            long a1x = game.A.XDelta, b1y = game.B.XDelta, c1 = game.Prize.X;
+            long a2x = game.A.YDelta, b2y = game.B.YDelta, c2 = game.Prize.Y;
 
-            int aPresses = (c1 * b2y - b1y * c2) / (a1x * b2y - b1y * a2x);
-            int bPresses = (a1x * c2 - c1 * a2x) / (a1x * b2y - b1y * a2x);
+            long aPresses = (c1 * b2y - b1y * c2) / (a1x * b2y - b1y * a2x);
+            long bPresses = (a1x * c2 - c1 * a2x) / (a1x * b2y - b1y * a2x);
 
             // validate?
             if ((game.A.XDelta * aPresses + game.B.XDelta * bPresses) != game.Prize.X ||
