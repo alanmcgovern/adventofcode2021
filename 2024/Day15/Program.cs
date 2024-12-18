@@ -28,7 +28,7 @@ namespace Day15
         Box = 'O'
     }
 
-    class Part2
+    class MainClass
     {
         internal class Content (ContentType type, List<Position>? parts = null)
         {
@@ -37,31 +37,37 @@ namespace Day15
             public ContentType Type { get; } = type;
         }
 
-        static (Dictionary<Position, Content>, Direction[]) LoadData ()
+        static (Dictionary<Position, Content>, Direction[]) LoadData (bool doubled)
         {
             var map = new Dictionary<Position, Content> ();
             var lines = File.ReadAllLines ("input.txt");
             int y = 0;
             foreach (var grid in lines.TakeWhile (t => !string.IsNullOrEmpty (t))) {
                 for (int x = 0; x < grid.Length; x++) {
+                    Position firstPos, secondPos;
+                    if (doubled) {
+                        firstPos = new Position (x * 2, y);
+                        secondPos = new Position (x * 2 + 1, y);
+                    } else {
+                        firstPos = secondPos = new Position (x, y);
+                    }
 
-                    var firstPos = new Position (x * 2, y);
-                    var secondPos = new Position (x * 2 + 1, y);
                     var contentType = (ContentType) grid[x];
                     switch (contentType) {
                         case ContentType.Space:
                         case ContentType.Wall:
                             map.Add (firstPos, new Content (contentType));
-                            map.Add (secondPos, new Content (contentType));
+                            map[secondPos] = new Content (contentType);
                             break;
                         case ContentType.Robot:
                             map.Add (firstPos, new Content (contentType));
-                            map.Add (secondPos, new Content (ContentType.Space));
+                            if (doubled)
+                                map[secondPos] = new Content (ContentType.Space);
                             break;
                         case ContentType.Box:
-                            var content = new Content (contentType, [firstPos, secondPos]);
+                            var content = new Content (contentType, new[] { firstPos, secondPos }.Distinct().ToList ());
                             map.Add (firstPos, content);
-                            map.Add (secondPos, content);
+                            map[secondPos] = content;
                             break;
                     }
                 }
@@ -76,15 +82,23 @@ namespace Day15
             return (map, directions.ToArray ());
         }
 
-        internal int Run ()
+        static void Main (string[] args)
         {
-            (var map, var directions) = LoadData ();
+            var part1 = Run (false, true);
+            var part2 = Run (true);
+
+            Console.WriteLine ($"Q1: {part1}");
+            Console.WriteLine ($"Q2: {part2}");
+        }
+
+        static int Run (bool doubled, bool visualization = false)
+        {
+            (var map, var directions) = LoadData (doubled);
 
             // replace robot with space... for convenience.
             var robot = map.First (t => t.Value.Type == ContentType.Robot).Key;
             map[robot] = new Content (ContentType.Space);
 
-            Console.Clear ();
             for (int i = 0; i < directions.Length; i++) {
                 var delta = directions[i] switch {
                     Direction.Left => new Position (-1, 0),
@@ -101,13 +115,15 @@ namespace Day15
                 }
 
                 // Let's have a look!
-                Console.SetCursorPosition (0, 0);
-                var width = map.Keys.Max (t => t.X) + 1;
-                Console.WriteLine ("Enjoy the visulization".PadRight (width));
-                Console.WriteLine ($"{(float) i * 100 / directions.Length:0.00}% complete");
-                Console.WriteLine ("".PadRight (width));
+                if (visualization) {
+                    Console.SetCursorPosition (0, 0);
+                    var width = map.Keys.Max (t => t.X) + 1;
+                    Console.WriteLine ("Enjoy the visulization".PadRight (width));
+                    Console.WriteLine ($"{(float) i * 100 / directions.Length:0.00}% complete");
+                    Console.WriteLine ("".PadRight (width));
 
-                Print (map, robot);
+                    Print (map, robot);
+                }
             }
 
             return map
@@ -118,7 +134,7 @@ namespace Day15
                 .Sum (t => t.X + t.Y * 100);
         }
 
-        static void Print(Dictionary<Position, Content> map, Position robot)
+        static void Print (Dictionary<Position, Content> map, Position robot)
         {
             var sb = new StringBuilder ();
 
@@ -132,7 +148,7 @@ namespace Day15
                         else if (content.Type == ContentType.Wall)
                             sb.Append ('#');
                         else if (content.Type == ContentType.Box)
-                            sb.Append (content.Parts[0] == new Position (x, y) ? "[" : "]");
+                            sb.Append (content.Parts[0] == new Position (x, y) ? (content.Parts.Count == 1 ? "O" : "[") : "]");
                     }
                 }
                 sb.AppendLine ();
@@ -142,7 +158,7 @@ namespace Day15
 
         static bool CanMove (Dictionary<Position, Content> map, Position location, Position delta, out HashSet<Content>? boxes)
         {
-            boxes = null!;
+            boxes = null;
             var destItem = map[location + delta];
             if (destItem.Type == ContentType.Space)
                 return true;
@@ -205,88 +221,6 @@ namespace Day15
                     map[position] = newBox;
                 }
             }
-        }
-    }
-
-    class Part1
-    {
-        static (Dictionary<Position, ContentType>, Direction[]) LoadData ()
-        {
-            var map = new Dictionary<Position, ContentType> ();
-            var lines = File.ReadAllLines ("input.txt");
-            int y = 0;
-            foreach (var grid in lines.TakeWhile (t => !string.IsNullOrEmpty (t))) {
-                for (int x = 0; x < grid.Length; x++)
-                    map.Add (new Position (x, y), (ContentType)grid[x]);
-                y++;
-            }
-
-            var directions = new List<Direction> ();
-            foreach (var routePart in lines.SkipWhile (t => !string.IsNullOrEmpty (t))) {
-                foreach (var d in routePart)
-                    directions.Add ((Direction) d);
-            }
-            return (map, directions.ToArray ());
-        }
-
-        static void Main (string[] args)
-        {
-            (var map, var directions) = LoadData ();
-
-            // replace robot with space... for convenience.
-            var robot = map.First (t => t.Value == ContentType.Robot).Key;
-            map[robot] = ContentType.Space;
-
-            foreach (var movement in directions) {
-                var delta = movement switch {
-                    Direction.Left => new Position (-1, 0),
-                    Direction.Right => new Position (1, 0),
-                    Direction.Up => new Position (0, -1),
-                    Direction.Down => new Position (0, 1),
-                    _ => throw new NotSupportedException ()
-                };
-
-                if (CanMove (map, robot, delta)) {
-                    Move (map, robot, delta);
-                    robot += delta;
-                }
-            }
-
-            // This prints the map because i wanted it to :P
-            var part2 = new Part2 ().Run ();
-            Console.WriteLine ($"Q1: {map.Where (t => t.Value == ContentType.Box).Sum (t => t.Key.X + t.Key.Y * 100)}");
-
-            Console.WriteLine ($"Q2: {part2}");
-        }
-
-        static bool CanMove (Dictionary<Position, ContentType> map, Position location, Position delta)
-        {
-            if (map[location + delta] == ContentType.Space)
-                return true;
-            if (map[location + delta] == ContentType.Wall)
-                return false;
-
-            // Is there a space after the series of boxes?
-            var shuffle = location + delta;
-            while (map[shuffle] == ContentType.Box)
-                shuffle += delta;
-            return map[shuffle] == ContentType.Space;
-        }
-
-        static void Move (Dictionary<Position, ContentType> map, Position location, Position delta)
-        {
-            // If it's a space, we just move into it.
-            if (map[location + delta] == ContentType.Space)
-                return;
-
-            // Move the first box to the next open position.
-            var firstBox = location + delta;
-            var firstSpace = firstBox;
-            while (map[firstSpace] == ContentType.Box)
-                firstSpace += delta;
-
-            map[firstSpace] = ContentType.Box;
-            map[firstBox] = ContentType.Space;
         }
     }
 }
