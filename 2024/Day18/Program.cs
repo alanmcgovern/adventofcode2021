@@ -15,9 +15,16 @@ namespace Day18
         {
             var points = File.ReadAllLines ("input.txt")
                 .Select (t => t.Split (','))
-                .Select (t => new Point (int.Parse (t[0]), int.Parse (t[1])));
+                .Select (t => new Point (int.Parse (t[0]), int.Parse (t[1])))
+                .ToArray ();
 
             Console.WriteLine ($"Q1: {ShortestDistance (new Point (0, 0), new Point (70, 70), points.Take (1024))}");
+
+            int tooMany = 1024;
+            while (ShortestDistance (new Point (0, 0), new Point (70, 70), points.Take (tooMany)) > 0)
+                tooMany++;
+
+            Console.WriteLine ($"Q2: {points.Take (tooMany).Last ()}");
         }
 
         static int ShortestDistance (Point start, Point end, IEnumerable<Point> impassablePoints)
@@ -47,7 +54,7 @@ namespace Day18
                 }
             }
 
-            return dist[end];
+            return dist.TryGetValue (end, out int value) ? value : -1;
         }
     }
 }
