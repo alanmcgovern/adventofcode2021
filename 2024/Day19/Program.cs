@@ -13,34 +13,34 @@ namespace Day19
             var towels = lines.First ().Split (", ").Select (t => t.AsMemory ()).ToArray ();
             var patterns = lines.Skip (2).ToArray ();
 
-            var madePatterns = patterns.Select (t => CanMakeRecursive (t.AsMemory (), towels)).ToArray ();
-            Console.WriteLine ($"Q1 {madePatterns.Where (t => t.canMake).Count ()}");
-            Console.WriteLine ($"Q2 {madePatterns.Sum (t => t.count)}");
+            var counts = new Dictionary<ReadOnlyMemory<char>, long> (new MemoryComparer ());
+            var madePatterns = patterns.Select (t => CanMakeRecursive (t.AsMemory (), towels, counts)).ToArray ();
+            Console.WriteLine ($"Q1 {madePatterns.Where (t => t > 0).Count ()}");
+            Console.WriteLine ($"Q2 {madePatterns.Sum (t => t)}");
         }
 
-        static readonly Dictionary<ReadOnlyMemory<char>, bool> cache = new Dictionary<ReadOnlyMemory<char>, bool> (new MemoryComparer ());
-        static readonly Dictionary<ReadOnlyMemory<char>, long> counts = new Dictionary<ReadOnlyMemory<char>, long> (new MemoryComparer ());
-        static (bool canMake, long count) CanMakeRecursive (ReadOnlyMemory<char> remainingPattern, ReadOnlyMemory<char>[] towels)
+        static long CanMakeRecursive (ReadOnlyMemory<char> remainingPattern, ReadOnlyMemory<char>[] towels, Dictionary<ReadOnlyMemory<char>, long> counts)
         {
-            if (cache.TryGetValue (remainingPattern, out var cached))
-                return (cached, counts[remainingPattern]);
-
+            // We matched everything. Success!
             if (remainingPattern.Length == 0)
-                return (true, 1);
+                return 1;
 
+            // We matched this previously - return previous count.
+            if (counts.TryGetValue (remainingPattern, out var cached))
+                return cached;
+
+            // If any towel matches, recurse and count the ways it matches.
             for (int i = 0; i < towels.Length; i++) {
                 if (remainingPattern.Span.StartsWith (towels[i].Span)) {
-                    var (canMake, count) = CanMakeRecursive (remainingPattern.Slice (towels[i].Span.Length), towels);
-                    cache[remainingPattern] = canMake;
+                    var count = CanMakeRecursive (remainingPattern.Slice (towels[i].Span.Length), towels, counts);
                     counts[remainingPattern] = counts.GetValueOrDefault (remainingPattern, 0) + count;
                 }
             }
 
-            if (!counts.TryGetValue (remainingPattern, out var val)) {
-                cache[remainingPattern] = false;
+            // If none of the towels matched the remaining pattern, mark it as dead.
+            if (!counts.TryGetValue (remainingPattern, out var val))
                 counts[remainingPattern] = 0;
-            }
-            return (cache[remainingPattern], counts[remainingPattern]);
+            return val;
         }
 
         class MemoryComparer : IEqualityComparer<ReadOnlyMemory<char>>
@@ -49,7 +49,7 @@ namespace Day19
                 => x.Span.SequenceEqual (y.Span);
 
             public int GetHashCode ([DisallowNull] ReadOnlyMemory<char> obj)
-                => string.GetHashCode (obj.Span, StringComparison.Ordinal);
+                => string.GetHashCode (obj.Span);
         }
     }
 }
