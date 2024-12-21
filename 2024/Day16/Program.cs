@@ -27,6 +27,8 @@ namespace Day16
                 => new (Y, X);
         }
 
+        readonly record struct Node(Position Position, Position Direction);
+
         static void Main (string[] args)
         {
             int y = 0;
@@ -44,46 +46,45 @@ namespace Day16
                 y++;
             }
 
-            (var pathLength, var optimalTileCount) = CalculateDistance (path, start, end, Position.Right);
+            (var pathLength, var optimalTileCount) = CalculateDistance (path, new Node (start, Position.Right), end);
             Console.WriteLine ($"Q1: {pathLength}");
             Console.WriteLine ($"Q2: {optimalTileCount}");
         }
 
-        static (int pathLength, int optimalTiles) CalculateDistance (HashSet<Position> path, Position start, Position end, Position initialDirection)
+        static (int pathLength, int optimalTiles) CalculateDistance (HashSet<Position> path, Node start, Position end)
         {
-            var queue = new PriorityQueue<(Position, Position), int> ([((start, initialDirection), 0)]);
-            var dist = new Dictionary<Position, int> { { start, 0 } };
-            var previousNodes = new Dictionary<Position, HashSet<Position>> { { start, new HashSet<Position> { start } } };
+            var queue = new PriorityQueue<Node, int> ([(start, 0)]);
+            var dist = new Dictionary<Node, int> { { start, 0 } };
+            var previousNodes = new Dictionary<Node, HashSet<Node>> { { start, new HashSet<Node> { start } } };
 
             while (queue.Count > 0) {
-                (var currentPos, var currentDirection) = queue.Dequeue ();
-                foreach ((var nextDirection, var rotatingCost) in new[] { (currentDirection, 0), (currentDirection.Flip (), 1000), (currentDirection.Flip ().Reverse (), 1000) }) {
-                    var nextPos = currentPos + nextDirection;
-                    var nextDist = dist[currentPos] + 1 + rotatingCost;
-                    if (!path.Contains (nextPos))
+                var currentNode = queue.Dequeue ();
+                foreach ((var nextDirection, var cost) in new[] { (currentNode.Direction, 1), (currentNode.Direction.Flip (), 1000), (currentNode.Direction.Flip ().Reverse (), 1000) }) {
+                    // Either walk forward or rotate 90 degrees. Both are valid 'moves'.
+                    var nextNode = currentNode.Direction == nextDirection ?
+                        new Node (currentNode.Position + nextDirection, nextDirection) :
+                        new Node (currentNode.Position, nextDirection);
+                    if (!path.Contains (nextNode.Position))
                         continue;
-                    if (nextPos == new Position (5, 7))
-                        Console.WriteLine (currentPos);
 
-                    if (dist.TryGetValue (nextPos, out var knownShortest)) {
+                    var nextDist = dist[currentNode] + cost;
+                    if (dist.TryGetValue (nextNode, out var knownShortest)) {
                         if (nextDist < knownShortest) {
-                            previousNodes[nextPos].Clear ();
-                            previousNodes[nextPos].Add (currentPos);
+                            previousNodes[nextNode].Clear ();
+                            previousNodes[nextNode].Add (currentNode);
                         } else if (nextDist == knownShortest) {
-                            previousNodes[nextPos].Add (currentPos);
+                            previousNodes[nextNode].Add (currentNode);
                         }
                     } else {
-                        if (previousNodes.ContainsKey (nextPos))
-                            Console.WriteLine ("derp");
-                        previousNodes[nextPos] = new HashSet<Position> { currentPos };
-                        dist[nextPos] = nextDist;
-                        queue.Enqueue ((nextPos, nextDirection), nextDist);
+                        previousNodes[nextNode] = new HashSet<Node> { currentNode };
+                        dist[nextNode] = nextDist;
+                        queue.Enqueue (nextNode, nextDist);
                     }
                 }
             }
 
-            var queueToCheck = new Queue<Position>([end]);
-            var optimalTiles = new HashSet<Position> ();
+            var queueToCheck = new Queue<Node> (Position.AllDirections.Select (t => new Node (end, t)));
+            var optimalTiles = new HashSet<Node> ();
 
             while (queueToCheck.Count > 0) { 
                 var cur = queueToCheck.Dequeue ();
@@ -96,30 +97,15 @@ namespace Day16
                 }
             }
 
+            var optimalDistance = Position.AllDirections.Select (t => new Node (end, t))
+                .Select (t => dist[t])
+                .Min ();
 
-            // print the fucker.
-            StringBuilder sb = new StringBuilder ();
-            for (int y = 0; y < path.Max (t => t.Y) + 1; y++) {
-                for (int x = 0; x < path.Max (t => t.X) + 1; x++) {
-                    var pos = new Position (x, y);
-                    if (pos == start)
-                        sb.Append ('S');
-                    else if (pos == end)
-                        sb.Append ('E');
-                    else if (optimalTiles.Contains (pos))
-                        sb.Append ('o');
-                    else if (path.Contains (pos))
-                        sb.Append ('.');
-                    else
-                        sb.Append ('#');
-                }
-                sb.AppendLine ();
-            }
-
-            Console.WriteLine (sb.ToString ());
-
-
-            return (dist[end], optimalTiles.Count);
+            var optimalTileCount = optimalTiles
+                .Select (t => t.Position)
+                .Distinct ()
+                .Count ();
+            return (pathLength: optimalDistance, optimalTileCount: optimalTileCount);
         }
     }
 }
