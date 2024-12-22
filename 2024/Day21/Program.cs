@@ -25,34 +25,9 @@ namespace Day21
                 => new (left.X - right.X, left.Y - right.Y);
         }
 
-        static readonly IDictionary<Position, char> KeyPad = new Dictionary<Position, char> {
-            {new Position (0, 0), '7' }, {new Position (1, 0), '8' }, {new Position (2, 0), '9' },
-            {new Position (0, 1), '4' }, {new Position (1, 1), '5' }, {new Position (2, 1), '6' },
-            {new Position (0, 2), '1' }, {new Position (1, 2), '2' }, {new Position (2, 2), '3' },
-                                         {new Position (1, 3), '0' }, {new Position (2, 3), 'A' }
-        }.ToImmutableDictionary ();
-
-        static readonly IDictionary<Position, char> DirectionPad = new Dictionary<Position, char> {
-                                         {new Position (1, 0), '^' }, {new Position (2, 0), 'A' },
-            {new Position (0, 1), '<' }, {new Position (1, 1), 'v' }, {new Position (2, 1), '>' },
-        }.ToImmutableDictionary ();
-
-        // Arranged furthest to closest.
-        // Arranged so the direction can be reversed by adding '2'.
-        //
-        // Who doesn't love a good magic number :P 
-        //
-        static readonly ImmutableList<(char, Position)> Movements = [
-            ('<', Position.Left),
-            ('v', Position.Down),
-            ('>', Position.Right),
-            ('^', Position.Up),
-        ];
-
         static void Main (string[] args)
         {
             var codes = File.ReadLines ("input.txt")
-                .Select (t => ("A" + t).ToImmutableArray ())
                 .ToImmutableArray ();
 
             // I was originally going to calculate this depth first, and 'solve'
@@ -77,49 +52,108 @@ namespace Day21
             // every time we recurse into a numpad. I bet we'll need an int64 for this.
             //
             // The number's gonna be huge.
-            var completePaths = codes.Select (code => GetCompleteMoves (code, 2));
+            //
+            // Maybe let's create a transition table instead?
+
+            var transitionTable = CreateTransitionTable (codes);
+
+            if (Calculate (CreateTransitionTable (new[] { "029A" }), "029A", 2) != 68)
+                throw new Exception ();
+
+            var results = codes.Select (code => (code, Calculate (transitionTable, code, 2), NumFromCode (code))).ToArray ();
+            foreach (var result in results)
+                Console.WriteLine ($"{result.code} - {result.Item2} - {result.Item3}");
+            Console.WriteLine ($"Q1 {results.Select (t => t.Item2 * t.Item3).Sum ()}");
+
+            results = codes.Select (code => (code, Calculate (transitionTable, code, 25), NumFromCode (code))).ToArray ();
+            foreach (var result in results)
+                Console.WriteLine ($"{result.code} - {result.Item2} - {result.Item3}");
+            Console.WriteLine ($"Q1 {results.Select (t => t.Item2 * t.Item3).Sum ()}");
+
         }
 
-        static string GetCompleteMoves (IList<char> code, int robotNumPads)
+        static Dictionary<(char src, char dst), string> CreateTransitionTable (IList<string> codes)
         {
-            // Get the moves on the keypad.
-            var sb = new StringBuilder ();
-            List<Position> keyPadMoves = new List<Position> ();
-            for (int i = 0; i < code.Count; i ++) {
-                var from = i == 0 ? 'A' : code[i - 1];
-                var to = code[i];
+            var codeTable = new Dictionary<(char, char), string> ();
 
-                var path = ShortestPath (KeyPad, from, to);
-                keyPadMoves.AddRange (path);
-            }
-            return sb.ToString ();
-        }
+            // I hardcoded this the wrong way around.
+            //
+            // Sue me. Just reverse it
+            IDictionary<char, Position> KeyPad = new Dictionary<Position, char> {
+                {new Position (0, 0), '7' }, {new Position (1, 0), '8' }, {new Position (2, 0), '9' },
+                {new Position (0, 1), '4' }, {new Position (1, 1), '5' }, {new Position (2, 1), '6' },
+                {new Position (0, 2), '1' }, {new Position (1, 2), '2' }, {new Position (2, 2), '3' },
+                                             {new Position (1, 3), '0' }, {new Position (2, 3), 'A' }
+            }.ToDictionary (key => key.Value, val => val.Key);
 
-        static StringBuilder ShortestPath (IDictionary<Position, char> device, char startChar, char endChar)
-        {
-            var sb = new StringBuilder ();
-            var start = device.Single (t => t.Value == startChar).Key;
-            var end = device.Single (t => t.Value == endChar).Key;
+            // Avoid the hole at (0,3) by choosing to do either the horzs or verts first
+            // depending on which helps us avoid the hole
+            foreach (var code in codes.Select (t => "A" + t)) {
+                for (int i = 1; i < code.Length; i++) {
+                    var startPos = KeyPad[code[i - 1]];
+                    var endPos = KeyPad[code[i]];
 
-            var queue = new PriorityQueue<Position, int> ([(start, 0)]);
-            var dist = new Dictionary<Position, int> { { start, 0 } };
-            var previousNodes = new Dictionary<Position, Position> { { start, start } };
+                    var delta = endPos - startPos;
 
-            while (queue.Count > 0) {
-                var currentPos = queue.Dequeue ();
-                foreach (var nextDirection in Position.AllDirections) {
-                    var nextPos = currentPos + nextDirection;
-                    if (!device.ContainsKey (nextPos))
-                        continue;
+                    var xResult = new string (delta.X < 0 ? '<' : '>', Math.Abs (delta.X));
+                    var yResult = new string (delta.Y < 0 ? '^' : 'v', Math.Abs (delta.Y));
 
-                    var nextDist = dist[currentPos] + 1;
-                    previousNodes[nextPos] = currentPos;
-                    dist[nextPos] = nextDist;
-                    queue.Enqueue (nextPos, nextDist);
+                    // priority? Left, Down, Up, Right?
+                    if (delta.X < 0 && startPos + new Position (delta.X, 0) != new Position (0, 3))
+                        codeTable[(code[i - 1], code[i])] = xResult + yResult;
+                    else if (delta.Y != 0 && startPos + new Position (0, delta.Y) != new Position (0, 3))
+                        codeTable[(code[i - 1], code[i])] = yResult + xResult;
+                    else
+                        codeTable[(code[i - 1], code[i])] = xResult + yResult;
                 }
             }
 
-            return sb.ToString ();
+            IDictionary<Position, char> DirectionPad = new Dictionary<Position, char> {
+                                         {new Position (1, 0), '^' }, {new Position (2, 0), 'A' },
+                {new Position (0, 1), '<' }, {new Position (1, 1), 'v' }, {new Position (2, 1), '>' },
+            }.ToImmutableDictionary ();
+
+            // Avoid the hole at (0,0) by choosing to do either the horzs or verts first
+            // depending on which helps us avoid the hole
+            foreach (var src in DirectionPad) {
+                foreach (var dst in DirectionPad) {
+
+                    var delta = dst.Key - src.Key;
+
+                    var xResult = new string (delta.X < 0 ? '<' : '>', Math.Abs (delta.X));
+                    var yResult = new string (delta.Y < 0 ? '^' : 'v', Math.Abs (delta.Y));
+                    if ((src.Key + new Position (delta.X, 0)) == new Position (0, 0))
+                        codeTable[(src.Value, dst.Value)] = yResult + xResult;
+                    else
+                        codeTable[(src.Value, dst.Value)] = xResult + yResult;
+                }
+            }
+
+            return codeTable;
         }
+
+        static long Calculate (Dictionary<(char src, char dst), string> lookup, string code, int dirPads)
+        {
+            var movements = "";
+            var numPadTargets = "A" + code;
+            for (int i = 1; i < numPadTargets.Length; i++)
+                movements += lookup[(numPadTargets[i - 1], numPadTargets[i])] + "A";
+
+            while (dirPads > 0) {
+                movements = "A" + movements;
+                // There's just one direction pad in the example...
+                var dirPadMovements = "";
+                for (int i = 1; i < movements.Length; i++) {
+                    dirPadMovements += lookup[(movements[i - 1], movements[i])] + "A";
+                }
+                movements = dirPadMovements;
+                dirPads--;
+            }
+            return movements.Length;
+        }
+
+        // Hopefully :P 
+        static int NumFromCode(string code)
+            => int.Parse (code.Substring (0, code.Length - 1));
     }
 }
