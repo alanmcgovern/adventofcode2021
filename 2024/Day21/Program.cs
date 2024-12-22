@@ -75,60 +75,45 @@ namespace Day21
         {
             var codeTable = new Dictionary<(char, char), string> ();
 
-            // I hardcoded this the wrong way around.
-            //
-            // Sue me. Just reverse it
-            IDictionary<char, Position> KeyPad = new Dictionary<Position, char> {
-                {new Position (0, 0), '7' }, {new Position (1, 0), '8' }, {new Position (2, 0), '9' },
-                {new Position (0, 1), '4' }, {new Position (1, 1), '5' }, {new Position (2, 1), '6' },
-                {new Position (0, 2), '1' }, {new Position (1, 2), '2' }, {new Position (2, 2), '3' },
-                                             {new Position (1, 3), '0' }, {new Position (2, 3), 'A' }
-            }.ToDictionary (key => key.Value, val => val.Key);
+            var keyPad = new Dictionary<Position, char> {
+                {new Position (0, 0), '7' }, { new Position (1, 0), '8' }, { new Position (2, 0), '9' },
+                {new Position (0, 1), '4' }, { new Position (1, 1), '5' }, { new Position (2, 1), '6' },
+                {new Position (0, 2), '1' }, { new Position (1, 2), '2' }, { new Position (2, 2), '3' },
+                                             { new Position (1, 3), '0' }, { new Position (2, 3), 'A' }
+            };
 
-            // Avoid the hole at (0,3) by choosing to do either the horzs or verts first
-            // depending on which helps us avoid the hole
-            foreach (var code in codes.Select (t => "A" + t)) {
-                for (int i = 1; i < code.Length; i++) {
-                    var startPos = KeyPad[code[i - 1]];
-                    var endPos = KeyPad[code[i]];
+            // Avoid the hole at (0,3)
+            foreach ((var srcPos, var srcKey) in keyPad)
+                foreach ((var dstPos, var dstKey) in keyPad)
+                    codeTable[(srcKey, dstKey)] = GeneratePathBetweenPoints (srcPos, dstPos, new Position (0, 3));
 
-                    var delta = endPos - startPos;
+            var directionPad = new Dictionary<Position, char> {
+                                             { new Position (1, 0), '^' }, { new Position (2, 0), 'A' },
+                {new Position (0, 1), '<' }, { new Position (1, 1), 'v' }, { new Position (2, 1), '>' },
+            };
 
-                    var xResult = new string (delta.X < 0 ? '<' : '>', Math.Abs (delta.X));
-                    var yResult = new string (delta.Y < 0 ? '^' : 'v', Math.Abs (delta.Y));
-
-                    // priority? Left, Down, Up, Right?
-                    if (delta.X < 0 && startPos + new Position (delta.X, 0) != new Position (0, 3))
-                        codeTable[(code[i - 1], code[i])] = xResult + yResult;
-                    else if (delta.Y != 0 && startPos + new Position (0, delta.Y) != new Position (0, 3))
-                        codeTable[(code[i - 1], code[i])] = yResult + xResult;
-                    else
-                        codeTable[(code[i - 1], code[i])] = xResult + yResult;
-                }
-            }
-
-            IDictionary<Position, char> DirectionPad = new Dictionary<Position, char> {
-                                         {new Position (1, 0), '^' }, {new Position (2, 0), 'A' },
-                {new Position (0, 1), '<' }, {new Position (1, 1), 'v' }, {new Position (2, 1), '>' },
-            }.ToImmutableDictionary ();
-
-            // Avoid the hole at (0,0) by choosing to do either the horzs or verts first
-            // depending on which helps us avoid the hole
-            foreach (var src in DirectionPad) {
-                foreach (var dst in DirectionPad) {
-
-                    var delta = dst.Key - src.Key;
-
-                    var xResult = new string (delta.X < 0 ? '<' : '>', Math.Abs (delta.X));
-                    var yResult = new string (delta.Y < 0 ? '^' : 'v', Math.Abs (delta.Y));
-                    if ((src.Key + new Position (delta.X, 0)) == new Position (0, 0))
-                        codeTable[(src.Value, dst.Value)] = yResult + xResult;
-                    else
-                        codeTable[(src.Value, dst.Value)] = xResult + yResult;
-                }
-            }
+            // Avoid the hole at (0,0)
+            foreach ((var srcPos, var srcKey) in directionPad)
+                foreach ((var dstPos, var dstKey) in directionPad)
+                    codeTable[(srcKey, dstKey)] = GeneratePathBetweenPoints (srcPos, dstPos, new Position (0, 0));
 
             return codeTable;
+        }
+
+        static string GeneratePathBetweenPoints (Position srcPos, Position dstPos, Position hole)
+        {
+            var delta = dstPos - srcPos;
+
+            var xResult = new string (delta.X < 0 ? '<' : '>', Math.Abs (delta.X));
+            var yResult = new string (delta.Y < 0 ? '^' : 'v', Math.Abs (delta.Y));
+
+            // priority? Left, Down, Up, Right? Unless it enters the hole.
+            if (delta.X < 0 && srcPos + new Position (delta.X, 0) != hole)
+                return xResult + yResult;
+            else if (delta.Y != 0 && srcPos + new Position (0, delta.Y) != hole)
+                return yResult + xResult;
+            else
+                return xResult + yResult;
         }
 
         static long Calculate (Dictionary<(char src, char dst), string> lookup, string code, int dirPads)
