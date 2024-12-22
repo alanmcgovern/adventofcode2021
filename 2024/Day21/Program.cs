@@ -57,18 +57,17 @@ namespace Day21
 
             var transitionTable = CreateTransitionTable (codes);
 
-            if (Calculate (CreateTransitionTable (new[] { "029A" }), "029A", 2) != 68)
-                throw new Exception ();
+            long x = 0;
+            if ((x = Calculate (CreateTransitionTable (new[] { "029A" }), "029A", 0)) != 12)
+                throw new Exception ("Should be 12. was " + x);
+            if ((x = Calculate (CreateTransitionTable (new[] { "029A" }), "029A", 1)) != 28)
+                throw new Exception ("Should be 28. was " + x);
 
             var results = codes.Select (code => (code, Calculate (transitionTable, code, 2), NumFromCode (code))).ToArray ();
-            foreach (var result in results)
-                Console.WriteLine ($"{result.code} - {result.Item2} - {result.Item3}");
             Console.WriteLine ($"Q1 {results.Select (t => t.Item2 * t.Item3).Sum ()}");
 
             results = codes.Select (code => (code, Calculate (transitionTable, code, 25), NumFromCode (code))).ToArray ();
-            foreach (var result in results)
-                Console.WriteLine ($"{result.code} - {result.Item2} - {result.Item3}");
-            Console.WriteLine ($"Q1 {results.Select (t => t.Item2 * t.Item3).Sum ()}");
+            Console.WriteLine ($"Q2 {results.Select (t => t.Item2 * t.Item3).Sum ()}");
 
         }
 
@@ -134,22 +133,28 @@ namespace Day21
 
         static long Calculate (Dictionary<(char src, char dst), string> lookup, string code, int dirPads)
         {
-            var movements = "";
+            // Rather than capturing a string, just keep appending the parts to the dictionary?
+            Dictionary<string, long> overallFrequency = new Dictionary<string, long> ();
             var numPadTargets = "A" + code;
-            for (int i = 1; i < numPadTargets.Length; i++)
-                movements += lookup[(numPadTargets[i - 1], numPadTargets[i])] + "A";
+            for (int i = 1; i < numPadTargets.Length; i++) {
+                var p = lookup[(numPadTargets[i - 1], numPadTargets[i])] + "A";
+                overallFrequency[p] = overallFrequency.GetValueOrDefault (p, 0) + 1;
+            }
 
             while (dirPads > 0) {
-                movements = "A" + movements;
-                // There's just one direction pad in the example...
-                var dirPadMovements = "";
-                for (int i = 1; i < movements.Length; i++) {
-                    dirPadMovements += lookup[(movements[i - 1], movements[i])] + "A";
+                var frequency = new Dictionary<string, long> ();
+                foreach (var phase in overallFrequency) {
+                    var pos = 'A';
+                    for (int i = 0; i < phase.Key.Length; i++) {
+                        var nextPath = lookup[(pos, phase.Key[i])] + "A";
+                        frequency[nextPath] = frequency.GetValueOrDefault(nextPath) + phase.Value;
+                        pos = phase.Key[i];
+                    }
                 }
-                movements = dirPadMovements;
+                overallFrequency = frequency;
                 dirPads--;
             }
-            return movements.Length;
+            return overallFrequency.Select (t => t.Key.Length * t.Value).Sum ();
         }
 
         // Hopefully :P 
