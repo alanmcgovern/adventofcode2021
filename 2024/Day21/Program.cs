@@ -30,31 +30,6 @@ namespace Day21
             var codes = File.ReadLines ("input.txt")
                 .ToImmutableArray ();
 
-            // I was originally going to calculate this depth first, and 'solve'
-            // each layer independently. However, the more I think about it, the
-            // more likely it is that there'll be paths which are globally optimal
-            // but aren't necessarily optimal at a given layer.
-            //
-            // This is why i've usually stopped before question 20. This amount of
-            // thought only goes into actual programs/software i'm writing :p
-            //
-            // Let's try a different approach...
-            //
-            //
-            // Narrator: some time later. after dinner...
-            //
-            // Thought some more.
-            //
-            // Regretted it.
-            //
-            // But at least it's 'easier' because we "just" need to figure out how to move
-            // left or right on the base numpad, and the moves will be (effectively) repeated
-            // every time we recurse into a numpad. I bet we'll need an int64 for this.
-            //
-            // The number's gonna be huge.
-            //
-            // Maybe let's create a transition table instead?
-
             var transitionTable = CreateTransitionTable (codes);
 
             long x = 0;
@@ -66,7 +41,7 @@ namespace Day21
             var results = codes.Select (code => (code, Calculate (transitionTable, code, 2), NumFromCode (code))).ToArray ();
             Console.WriteLine ($"Q1 {results.Select (t => t.Item2 * t.Item3).Sum ()}");
 
-            results = codes.Select (code => (code, Calculate (transitionTable, code, 25), NumFromCode (code))).ToArray ();
+            results = codes.Select (code => (code, Calculate (transitionTable, code, 36), NumFromCode (code))).ToArray ();
             Console.WriteLine ($"Q2 {results.Select (t => t.Item2 * t.Item3).Sum ()}");
 
         }
@@ -107,7 +82,6 @@ namespace Day21
             var xResult = new string (delta.X < 0 ? '<' : '>', Math.Abs (delta.X));
             var yResult = new string (delta.Y < 0 ? '^' : 'v', Math.Abs (delta.Y));
 
-            // priority? Left, Down, Up, Right? Unless it enters the hole.
             if (delta.X < 0 && srcPos + new Position (delta.X, 0) != hole)
                 return xResult + yResult;
             else if (delta.Y != 0 && srcPos + new Position (0, delta.Y) != hole)
@@ -143,7 +117,6 @@ namespace Day21
             return overallFrequency.Select (t => t.Key.Length * t.Value).Sum ();
         }
 
-        // Hopefully :P 
         static long NumFromCode(string code)
             => long.Parse (code.Substring (0, code.Length - 1));
     }
