@@ -135,20 +135,21 @@ namespace Day21
         {
             // Rather than capturing a string, just keep appending the parts to the dictionary?
             Dictionary<string, long> overallFrequency = new Dictionary<string, long> ();
-            var numPadTargets = "A" + code;
-            for (int i = 1; i < numPadTargets.Length; i++) {
-                var p = lookup[(numPadTargets[i - 1], numPadTargets[i])] + "A";
+            var pos = 'A';
+            for (int i = 0; i < code.Length; i++) {
+                var p = lookup[(pos, code[i])] + "A";
                 overallFrequency[p] = overallFrequency.GetValueOrDefault (p, 0) + 1;
+                pos = code[i];
             }
 
             while (dirPads > 0) {
                 var frequency = new Dictionary<string, long> ();
-                foreach (var phase in overallFrequency) {
-                    var pos = 'A';
-                    for (int i = 0; i < phase.Key.Length; i++) {
-                        var nextPath = lookup[(pos, phase.Key[i])] + "A";
-                        frequency[nextPath] = frequency.GetValueOrDefault(nextPath) + phase.Value;
-                        pos = phase.Key[i];
+                foreach ((var move, var count) in overallFrequency) {
+                    pos = 'A';
+                    for (int i = 0; i < move.Length; i++) {
+                        var nextPath = lookup[(pos, move[i])] + "A";
+                        frequency[nextPath] = frequency.GetValueOrDefault (nextPath, 0) + count;
+                        pos = move[i];
                     }
                 }
                 overallFrequency = frequency;
@@ -158,7 +159,7 @@ namespace Day21
         }
 
         // Hopefully :P 
-        static int NumFromCode(string code)
-            => int.Parse (code.Substring (0, code.Length - 1));
+        static long NumFromCode(string code)
+            => long.Parse (code.Substring (0, code.Length - 1));
     }
 }
